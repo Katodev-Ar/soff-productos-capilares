@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch and tools
+*.py
+*.mjs
+*.log
+.agents/
+skills-lock.json
+TERMINOS_Y_POLITICA_PRIVACIDAD_NEXO_POS.md
+public/TERMINOS_Y_POLITICA_PRIVACIDAD_NEXO_POS.md
+AUDITORIA_ARQUITECTURA_SISTEMA.md
