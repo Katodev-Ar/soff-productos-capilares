@@ -22,28 +22,29 @@ interface FavoritesContextType {
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined)
 
-const LOCAL_STORAGE_KEY = 'soff_favorites_v1'
+const getStorageKey = (userId?: string | null) => 
+  userId ? `soff_favorites_${userId}` : 'soff_favorites_guest'
 
 export const FavoritesProvider = ({ children }: { children: React.ReactNode }) => {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // 1. Cargar favoritos iniciales desde localStorage y Supabase
+  // 1. Sincronizar favoritos aislados por usuario y escuchar cambios de sesión
   useEffect(() => {
-    async function loadFavorites() {
+    let currentUserId: string | null = null
+
+    async function syncFavorites(user: any) {
+      setIsLoading(true)
       try {
-        // Carga inicial local para respuesta instantánea
-        const localData = localStorage.getItem(LOCAL_STORAGE_KEY)
+        const key = getStorageKey(user?.id)
+        const localData = typeof window !== 'undefined' ? localStorage.getItem(key) : null
         let initialFavs: FavoriteItem[] = []
         if (localData) {
           try {
             initialFavs = JSON.parse(localData)
-            setFavorites(initialFavs)
           } catch (e) {}
         }
 
-        // Si el usuario está autenticado, sincronizar con Supabase `wishlist`
-        const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           const { data: dbWishlist } = await supabase
             .from('wishlist')
@@ -58,48 +59,54 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
               createdAt: w.created_at
             }))
 
-            // Combinar con locales si hubiese alguno nuevo
-            const merged = [...mapped]
-            for (const localItem of initialFavs) {
-              if (!merged.some(m => m.productId === localItem.productId)) {
-                merged.push(localItem)
-                // Subir a base de datos
-                await supabase.from('wishlist').insert({
-                  user_id: user.id,
-                  product_id: localItem.productId,
-                  notify_stock: localItem.notifyStock,
-                  notify_sale: localItem.notifySale
-                })
-              }
+            setFavorites(mapped)
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(key, JSON.stringify(mapped))
             }
-
-            setFavorites(merged)
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged))
-          } else if (initialFavs.length > 0) {
-            // Migrar favoritos locales a la base de datos
-            const rowsToInsert = initialFavs.map(f => ({
-              user_id: user.id,
-              product_id: f.productId,
-              notify_stock: f.notifyStock,
-              notify_sale: f.notifySale
-            }))
-            await supabase.from('wishlist').insert(rowsToInsert)
+          } else {
+            setFavorites([])
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem(key)
+            }
           }
+        } else {
+          // Usuario no autenticado (invitado)
+          setFavorites(initialFavs)
         }
       } catch (err) {
-        console.error('Error cargando favoritos:', err)
+        console.error('Error sincronizando favoritos:', err)
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadFavorites()
+    // Inicializar con usuario actual
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      currentUserId = user?.id || null
+      syncFavorites(user)
+    })
+
+    // Escuchar cambios de autenticación (login, logout, cambio de cuenta)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const newUserId = session?.user?.id || null
+      if (newUserId !== currentUserId || event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+        currentUserId = newUserId
+        syncFavorites(session?.user || null)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
-  // Guardar en localStorage cada vez que cambien
-  const saveLocal = (items: FavoriteItem[]) => {
+  // Guardar en localStorage aislado por usuario
+  const saveLocal = async (items: FavoriteItem[]) => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items))
+      if (typeof window === 'undefined') return
+      const { data: { user } } = await supabase.auth.getUser()
+      const key = getStorageKey(user?.id)
+      localStorage.setItem(key, JSON.stringify(items))
     } catch (e) {}
   }
 
@@ -108,14 +115,14 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
   }, [favorites])
 
   const toggleFavorite = async (productId: string): Promise<boolean> => {
-    const exists = isFavorite(productId)
+    const existing = favorites.find(f => f.productId === productId)
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (exists) {
-      // Eliminar
+    if (existing) {
+      // Eliminar de favoritos
       const updated = favorites.filter(f => f.productId !== productId)
       setFavorites(updated)
-      saveLocal(updated)
+      await saveLocal(updated)
 
       if (user) {
         await supabase
@@ -126,7 +133,7 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
       }
       return false
     } else {
-      // Agregar
+      // Agregar a favoritos
       const newItem: FavoriteItem = {
         productId,
         notifyStock: true,
@@ -135,32 +142,19 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
       }
       const updated = [newItem, ...favorites]
       setFavorites(updated)
-      saveLocal(updated)
+      await saveLocal(updated)
 
       if (user) {
-        await supabase.from('wishlist').insert({
-          user_id: user.id,
-          product_id: productId,
-          notify_stock: true,
-          notify_sale: true
-        })
+        await supabase
+          .from('wishlist')
+          .upsert({
+            user_id: user.id,
+            product_id: productId,
+            notify_stock: true,
+            notify_sale: true
+          }, { onConflict: 'user_id,product_id' })
       }
       return true
-    }
-  }
-
-  const removeFromFavorites = async (productId: string) => {
-    const updated = favorites.filter(f => f.productId !== productId)
-    setFavorites(updated)
-    saveLocal(updated)
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase
-        .from('wishlist')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('product_id', productId)
     }
   }
 
@@ -180,16 +174,31 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
     })
 
     setFavorites(updated)
-    saveLocal(updated)
+    await saveLocal(updated)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       await supabase
         .from('wishlist')
         .update({
-          ...(settings.notifyStock !== undefined && { notify_stock: settings.notifyStock }),
-          ...(settings.notifySale !== undefined && { notify_sale: settings.notifySale })
+          notify_stock: settings.notifyStock,
+          notify_sale: settings.notifySale
         })
+        .eq('user_id', user.id)
+        .eq('product_id', productId)
+    }
+  }
+
+  const removeFromFavorites = async (productId: string) => {
+    const updated = favorites.filter(f => f.productId !== productId)
+    setFavorites(updated)
+    await saveLocal(updated)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase
+        .from('wishlist')
+        .delete()
         .eq('user_id', user.id)
         .eq('product_id', productId)
     }
@@ -215,7 +224,7 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 export const useFavorites = () => {
   const context = useContext(FavoritesContext)
   if (!context) {
-    throw new Error('useFavorites debe ser usado dentro de un FavoritesProvider')
+    throw new Error('useFavorites must be used within a FavoritesProvider')
   }
   return context
 }
