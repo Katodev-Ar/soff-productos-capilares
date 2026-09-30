@@ -106,7 +106,26 @@ export default function MiCuentaPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Mi Perfil</h1>
+          <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-100">
+            <div className="w-16 h-16 rounded-full border-2 border-brand-primary overflow-hidden bg-brand-primary/20 flex items-center justify-center flex-none shadow-sm">
+              {profile?.avatar_url ? (
+                <img 
+                  src={profile.avatar_url} 
+                  alt={firstName || 'Usuario'} 
+                  className="w-full h-full object-cover rounded-full" 
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="text-xl font-black text-[#002f5b]">
+                  {(firstName || 'U')[0].toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{firstName ? `${firstName} ${lastName}` : 'Mi Perfil'}</h1>
+              <p className="text-sm text-gray-500">{email}</p>
+            </div>
+          </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

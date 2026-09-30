@@ -50,7 +50,8 @@ export default function Footer() {
             <li><Link href="/checkout" className="text-sm text-gray-400 transition-colors hover:text-brand-primary">Envíos y pago</Link></li>
             <li><Link href="/pedidos" className="text-sm text-gray-400 transition-colors hover:text-brand-primary">Mis pedidos</Link></li>
             <li><Link href="/cuenta" className="text-sm text-gray-400 transition-colors hover:text-brand-primary">Mi perfil</Link></li>
-            <li><Link href="/legal" className="text-sm text-gray-400 transition-colors hover:text-brand-primary">Términos y Privacidad</Link></li>
+            <li><Link href="/politica-de-privacidad" className="text-sm text-gray-400 transition-colors hover:text-brand-primary">Política de Privacidad</Link></li>
+            <li><Link href="/condiciones-del-servicio" className="text-sm text-gray-400 transition-colors hover:text-brand-primary">Condiciones del Servicio</Link></li>
             <li>
               <a href="https://www.instagram.com/soffproductoscapilares" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-400 transition-colors hover:text-brand-primary">
                 Contacto
@@ -89,7 +90,13 @@ export default function Footer() {
       </div>
 
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 border-t border-gray-800 px-4 pt-8 sm:px-6 md:flex-row lg:px-8">
-        <p className="text-xs text-gray-500">© {new Date().getFullYear()} Soff Productos Capilares. Todos los derechos reservados.</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+          <p>© {new Date().getFullYear()} Soff Productos Capilares. Todos los derechos reservados.</p>
+          <span>•</span>
+          <Link href="/politica-de-privacidad" className="hover:text-white transition-colors">Privacidad</Link>
+          <span>•</span>
+          <Link href="/condiciones-del-servicio" className="hover:text-white transition-colors">Condiciones</Link>
+        </div>
         <a
           href="https://www.google.com/maps/search/?api=1&query=Av.%20Independencia%202820%2C%20San%20Miguel%20de%20Tucum%C3%A1n"
           target="_blank"

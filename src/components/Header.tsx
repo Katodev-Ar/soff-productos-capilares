@@ -91,6 +91,7 @@ export default function Header() {
   const [userRole, setUserRole] = useState('minorista')
   const [userName, setUserName] = useState('Usuario')
   const [userEmail, setUserEmail] = useState('')
+  const [userAvatar, setUserAvatar] = useState<string | null>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -113,10 +114,22 @@ export default function Header() {
       setIsLoggedIn(true)
       setUserEmail(user.email || '')
 
-      const { data: profile } = await supabase.from('profiles').select('first_name, role').eq('id', user.id).maybeSingle()
+      const meta = user.user_metadata || {}
+      const googleAvatar = meta.avatar_url || meta.picture || null
+      const googleName = meta.full_name || meta.name || null
+
+      const { data: profile } = await supabase.from('profiles').select('first_name, role, avatar_url').eq('id', user.id).maybeSingle()
       if (profile) {
         setUserRole(profile.role || 'minorista')
-        if (profile.first_name) setUserName(profile.first_name)
+        if (profile.first_name) {
+          setUserName(profile.first_name)
+        } else if (googleName) {
+          setUserName(googleName.split(' ')[0])
+        }
+        setUserAvatar(profile.avatar_url || googleAvatar)
+      } else {
+        if (googleName) setUserName(googleName.split(' ')[0])
+        setUserAvatar(googleAvatar)
       }
     }
 
@@ -203,8 +216,17 @@ export default function Header() {
                     aria-expanded={isProfileOpen}
                     aria-label="Abrir menú de perfil"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-primary bg-brand-primary/20">
-                      <User size={16} className="text-brand-primary" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-primary bg-brand-primary/20 overflow-hidden shadow-xs">
+                      {userAvatar ? (
+                        <img 
+                          src={userAvatar} 
+                          alt={userName} 
+                          className="h-full w-full object-cover rounded-full"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <User size={16} className="text-brand-primary" />
+                      )}
                     </div>
                     <span className="hidden font-medium lg:inline">{userName}</span>
                   </button>
@@ -218,8 +240,17 @@ export default function Header() {
                 {isProfileOpen && isLoggedIn && (
                   <div className="absolute right-0 top-12 z-[100] w-72 overflow-hidden rounded-2xl border border-gray-700/50 bg-[#1a1f2e] text-white shadow-2xl">
                     <div className="flex flex-col items-center border-b border-gray-700/50 px-4 pb-4 pt-6">
-                      <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full border-2 border-brand-primary bg-[#2a3040]">
-                        <User size={28} className="text-brand-primary" />
+                      <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full border-2 border-brand-primary bg-[#2a3040] overflow-hidden shadow-md">
+                        {userAvatar ? (
+                          <img 
+                            src={userAvatar} 
+                            alt={userName} 
+                            className="h-full w-full object-cover rounded-full"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <User size={28} className="text-brand-primary" />
+                        )}
                       </div>
                       <p className="text-base font-bold">{userName}</p>
                       <p className="text-xs text-gray-400">{userEmail}</p>
