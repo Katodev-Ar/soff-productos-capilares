@@ -1,5 +1,7 @@
 import { getDocumentProxy, extractText } from 'unpdf'
 import path from 'path'
+import os from 'os'
+import fs from 'fs'
 
 export type ReceiptValidationResult = {
   isValid: boolean
@@ -8,6 +10,7 @@ export type ReceiptValidationResult = {
   detectedAmount?: number
   expectedAmount: number
   referenceNumber?: string
+  recipientName?: string
   bankOrApp?: string
   confidence: 'alta' | 'media' | 'baja'
   message: string
@@ -34,6 +37,33 @@ function detectBankOrWallet(text: string): string {
   if (lower.includes('modo')) return 'MODO'
   if (lower.includes('coelsa')) return 'Red Coelsa'
   return 'Transferencia Bancaria'
+}
+
+/**
+ * Extrae el nombre del destinatario / titular de la cuenta
+ */
+function extractRecipientName(text: string): string | undefined {
+  const patterns = [
+    /(?:destinatario|titular|beneficiario|a\s+nombre\s+de|cuenta\s+destino)\s*[:\-]\s*([A-Za-zÁÉÍÓÚáéíóúñÑ\s]{3,35})/i,
+    /(?:le\s+transferiste\s+a|transferiste\s+a|enviaste\s+a|pagaste\s+a)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ\s]{3,35})/i,
+    /(?:para)\s*[:\-]\s*([A-Za-zÁÉÍÓÚáéíóúñÑ\s]{3,35})/i
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match && match[1]) {
+      const clean = match[1].split(/\n|\r|\bpor\b|\bde\b|\$|\bcvu\b|\bcbu\b|\balias\b/i)[0].trim()
+      if (clean.length > 2 && !clean.toLowerCase().includes('comprobante') && !clean.toLowerCase().includes('operación')) {
+        return clean
+      }
+    }
+  }
+
+  // Si figura Corbalan o Sofia (titulares del negocio)
+  if (/corbalan/i.test(text)) return 'Cristian Benjamin Corbalan'
+  if (/sofia/i.test(text)) return 'Sofia Productos Capilares'
+
+  return undefined
 }
 
 /**
@@ -146,14 +176,15 @@ export async function validateReceiptFile(
       }
     }
   } else {
-    // 2. Procesamiento de Imagen (OCR con Tesseract dinámico y timeout seguro)
+    // 2. Procesamiento de Imagen (OCR con Tesseract y aislamiento de cache en tmpdir)
     try {
       const Tesseract = (await import('tesseract.js')).default
       const workerPath = path.join(process.cwd(), 'node_modules', 'tesseract.js', 'src', 'worker-script', 'node', 'index.js')
       
       const ocrJob = (async () => {
         const worker = await Tesseract.createWorker('spa', 1, {
-          workerPath: typeof window === 'undefined' ? workerPath : undefined,
+          cachePath: os.tmpdir(),
+          workerPath: typeof window === 'undefined' && fs.existsSync(workerPath) ? workerPath : undefined,
           errorHandler: () => {}
         })
         const ret = await worker.recognize(buffer)
@@ -162,28 +193,41 @@ export async function validateReceiptFile(
       })()
 
       const timeoutJob = new Promise<string>((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout de lectura')), 7000)
+        setTimeout(() => reject(new Error('Timeout de procesamiento')), 12000)
       )
 
       extractedText = await Promise.race([ocrJob, timeoutJob])
     } catch (e: any) {
-      console.warn('OCR en imagen no completado (posible entorno serverless o timeout):', e?.message)
-      // Si el OCR no puede ejecutarse (por ejemplo en serverless de Vercel), aceptamos la imagen como comprobante válido para revisión manual
+      console.warn('OCR en imagen no completado o error:', e?.message)
       return {
-        isValid: true,
-        isReceipt: true,
-        amountMatches: true,
+        isValid: false,
+        isReceipt: false,
+        amountMatches: false,
         expectedAmount: expectedTotal,
-        referenceNumber: 'Revisión manual',
-        bankOrApp: 'Captura adjunta',
-        confidence: 'media',
-        message: 'Comprobante recibido correctamente en formato imagen. Quedará adjuntado a tu pedido para revisión.'
+        confidence: 'baja',
+        message: 'No pudimos verificar automáticamente los datos bancarios en la imagen. Por favor asegúrate de subir una captura nítida de tu comprobante de transferencia bancaria.'
       }
     }
   }
 
   // 3. Inspeccionar texto extraído
   const lowerText = extractedText.toLowerCase()
+
+  // Detectar documentos no bancarios explícitos (seguros, vehículos, carnets, certificados)
+  const nonReceiptTerms = [
+    'póliza',
+    'poliza',
+    'chasis',
+    'patente',
+    'endoso',
+    'tarjeta de circulación',
+    'tarjeta de circulacion',
+    'seguro obligatorio',
+    'asegurado',
+    'motomel',
+    'automotor'
+  ]
+  const isNonReceiptDoc = nonReceiptTerms.some(term => lowerText.includes(term))
 
   // Palabras clave típicas de una transferencia en Argentina
   const transferKeywords = [
@@ -223,9 +267,8 @@ export async function validateReceiptFile(
     }
   }
 
-  // Si no coincide con al menos 2 palabras clave:
-  const isReceipt = matchedKeywordsCount >= 2
-  if (!isReceipt) {
+  // Si es un documento no bancario o no tiene términos de transferencia:
+  if (isNonReceiptDoc || matchedKeywordsCount < 2) {
     return {
       isValid: false,
       isReceipt: false,
@@ -234,13 +277,16 @@ export async function validateReceiptFile(
       confidence: 'alta',
       pageCount,
       rawTextPreview: extractedText.slice(0, 150),
-      message: 'El documento subido no contiene los datos de un comprobante de transferencia bancaria legítimo (no se detectaron términos como transferencia, operación o CVU).'
+      message: isNonReceiptDoc
+        ? 'El archivo subido parece ser una póliza o tarjeta vehicular de seguro, no un comprobante bancario. Por favor sube la captura de la transferencia.'
+        : 'El documento subido no contiene los datos de un comprobante de transferencia bancaria legítimo (no se detectaron términos como transferencia, destinatario o número de operación).'
     }
   }
 
   // 4. Extraer datos del comprobante
   const bankOrApp = detectBankOrWallet(extractedText)
   const referenceNumber = extractReferenceNumber(extractedText)
+  const recipientName = extractRecipientName(extractedText)
   const amounts = extractAmounts(extractedText)
 
   // 5. Comparar monto con el total del pedido
@@ -257,6 +303,7 @@ export async function validateReceiptFile(
       detectedAmount: bestDetectedAmount,
       expectedAmount: expectedTotal,
       referenceNumber,
+      recipientName,
       bankOrApp,
       confidence: 'alta',
       pageCount,
@@ -271,6 +318,7 @@ export async function validateReceiptFile(
     detectedAmount: bestDetectedAmount || expectedTotal,
     expectedAmount: expectedTotal,
     referenceNumber: referenceNumber || 'Detectado',
+    recipientName: recipientName || 'Sofia / Cristian Corbalan',
     bankOrApp,
     confidence: 'alta',
     pageCount,

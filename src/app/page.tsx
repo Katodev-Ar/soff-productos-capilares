@@ -53,15 +53,6 @@ const fallbackOffers = [
   },
 ]
 
-const benefitItems = [
-  'Libre de parabenos',
-  'Libre de siliconas',
-  'Libre de sal',
-  'Apto veganos',
-  'Eficacia comprobada',
-  'Cruelty free',
-]
-
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({})
@@ -430,15 +421,6 @@ export default function Home() {
               </Link>
             ))}
           </div>
-        </section>
-
-        <section className="mb-12 flex flex-wrap gap-3 border-t border-gray-200 pt-10">
-          {benefitItems.map((pill) => (
-            <div key={pill} className="flex items-center gap-2 rounded-full border border-gray-200 px-5 py-2 text-[13px] font-semibold text-[#002f5b]">
-              <ShieldCheckIcon />
-              {pill}
-            </div>
-          ))}
         </section>
 
         <section id="ubicacion" className="scroll-mt-40 border-t border-gray-200 py-16 text-center">

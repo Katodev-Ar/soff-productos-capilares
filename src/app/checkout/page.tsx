@@ -24,7 +24,14 @@ import {
   ExternalLink, 
   Info,
   CheckCircle2,
-  FileCheck
+  FileCheck,
+  Maximize2,
+  X,
+  User,
+  Hash,
+  DollarSign,
+  Building2,
+  Eye
 } from 'lucide-react'
 import { FREE_SHIPPING_THRESHOLD, formatPrice } from '@/lib/catalog'
 import { TePuedeInteresar } from '@/components/TePuedeInteresar'
@@ -98,6 +105,8 @@ export default function CheckoutPage() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isValidatingReceipt, setIsValidatingReceipt] = useState(false)
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null)
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false)
   const [receiptValidation, setReceiptValidation] = useState<{
     isValid: boolean
     isReceipt: boolean
@@ -105,15 +114,34 @@ export default function CheckoutPage() {
     detectedAmount?: number
     expectedAmount?: number
     referenceNumber?: string
+    recipientName?: string
     bankOrApp?: string
+    confidence?: 'alta' | 'media' | 'baja'
+    pageCount?: number
     message: string
   } | null>(null)
 
   const handleFileChange = async (file: File | null) => {
+    // Revocar URL anterior si existía para evitar fugas de memoria
+    if (receiptPreviewUrl) {
+      URL.revokeObjectURL(receiptPreviewUrl)
+    }
+
     setReceiptFile(file)
     setReceiptValidation(null)
     setPaymentNotice(null)
-    if (!file) return
+
+    if (!file) {
+      setReceiptPreviewUrl(null)
+      return
+    }
+
+    // Si es imagen, crear URL para vista previa interactiva
+    if (file.type.startsWith('image/')) {
+      setReceiptPreviewUrl(URL.createObjectURL(file))
+    } else {
+      setReceiptPreviewUrl(null)
+    }
 
     // Chequeo rápido de tamaño en el cliente (máximo 15 MB)
     if (file.size > 15 * 1024 * 1024) {
@@ -951,53 +979,191 @@ export default function CheckoutPage() {
                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-800 hover:file:bg-green-200 cursor-pointer"
                     />
 
-                    {/* Detector en progreso */}
-                    {isValidatingReceipt && (
-                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center gap-2.5 animate-pulse">
-                        <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="font-medium">Analizando comprobante con detector inteligente de transferencias...</span>
-                      </div>
-                    )}
-
-                    {/* Resultado del Detector */}
-                    {!isValidatingReceipt && receiptValidation && (
-                      <div className={`mt-3 p-3.5 rounded-xl text-xs border transition-all ${
-                        receiptValidation.isValid 
-                          ? 'bg-green-50 border-green-300 text-green-950' 
-                          : 'bg-red-50 border-red-300 text-red-900'
-                      }`}>
-                        <div className="flex items-start gap-2.5">
-                          {receiptValidation.isValid ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-none" />
-                          ) : (
-                            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-none" />
-                          )}
-                          <div className="space-y-1.5 flex-1">
-                            <p className="font-bold text-sm">
-                              {receiptValidation.isValid ? 'Comprobante Verificado con Éxito' : 'Comprobante no válido'}
-                            </p>
-                            <p className="leading-relaxed">{receiptValidation.message}</p>
-                            {receiptValidation.isValid && (
-                              <div className="pt-1 flex flex-wrap gap-2 text-[11px] font-semibold">
-                                {receiptValidation.bankOrApp && (
-                                  <span className="bg-green-200/70 text-green-900 px-2 py-0.5 rounded-md">
-                                    🏦 {receiptValidation.bankOrApp}
-                                  </span>
-                                )}
-                                {receiptValidation.referenceNumber && (
-                                  <span className="bg-green-200/70 text-green-900 px-2 py-0.5 rounded-md">
-                                    N° Op: #{receiptValidation.referenceNumber}
-                                  </span>
-                                )}
-                                {receiptValidation.detectedAmount && (
-                                  <span className="bg-green-200/70 text-green-900 px-2 py-0.5 rounded-md">
-                                    Monto: ${receiptValidation.detectedAmount.toLocaleString('es-AR')}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                    {/* Vista Previa del Archivo / Imagen Subida */}
+                    {receiptFile && (
+                      <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50/70 p-3 overflow-hidden shadow-sm">
+                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-200/70">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
+                            <Eye className="h-3.5 w-3.5 text-gray-500" /> Vista previa del comprobante
+                          </span>
+                          <span className="text-[11px] text-gray-500 truncate max-w-[200px]">
+                            {receiptFile.name}
+                          </span>
                         </div>
+
+                        {/* Si es Imagen: Thumbnail con zoom */}
+                        {receiptPreviewUrl ? (
+                          <div className="relative group rounded-xl overflow-hidden border border-gray-200 bg-gray-900/5 flex items-center justify-center min-h-[160px] max-h-72">
+                            <img 
+                              src={receiptPreviewUrl} 
+                              alt="Vista previa del comprobante de transferencia" 
+                              className="object-contain max-h-72 w-auto mx-auto rounded-lg transition-transform duration-200 group-hover:scale-[1.01]" 
+                            />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
+                              <span className="text-white text-xs font-semibold bg-black/60 px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+                                <Maximize2 className="h-3.5 w-3.5" /> Clic para ampliar
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setIsZoomModalOpen(true)}
+                              className="absolute bottom-2.5 right-2.5 bg-black/75 hover:bg-black text-white px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-md backdrop-blur-sm transition-all"
+                            >
+                              <Maximize2 className="h-3.5 w-3.5" /> Ampliar foto
+                            </button>
+                          </div>
+                        ) : (
+                          /* Si es PDF */
+                          <div className="rounded-xl border border-red-200 bg-white p-3.5 flex items-center gap-3">
+                            <div className="w-12 h-12 bg-red-100 text-red-700 rounded-xl flex items-center justify-center font-bold text-xs shadow-inner">
+                              PDF
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-gray-900 truncate">{receiptFile.name}</p>
+                              <p className="text-[11px] text-gray-500 mt-0.5">
+                                {(receiptFile.size / 1024).toFixed(1)} KB {receiptValidation?.pageCount ? `• ${receiptValidation.pageCount} página(s)` : ''}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Scanner en progreso */}
+                        {isValidatingReceipt && (
+                          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center gap-3 animate-pulse">
+                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-none"></div>
+                            <div className="flex-1">
+                              <p className="font-bold text-[12px]">Detector inteligente en acción</p>
+                              <p className="text-[11px] text-blue-700">Leyendo imagen y extrayendo monto, titular y N° de transferencia...</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Resaltado de las Partes Importantes del Comprobante */}
+                        {!isValidatingReceipt && receiptValidation && (
+                          <div className="mt-3 space-y-2.5">
+                            {/* Banner de Estado */}
+                            <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                              receiptValidation.isValid 
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-950' 
+                                : 'bg-rose-50 border-rose-300 text-rose-950'
+                            }`}>
+                              {receiptValidation.isValid ? (
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5 flex-none" />
+                              ) : (
+                                <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5 flex-none" />
+                              )}
+                              <div className="flex-1">
+                                <p className="font-bold text-xs sm:text-sm">
+                                  {receiptValidation.isValid ? '✓ Comprobante Verificado con Éxito' : '✕ Comprobante no válido'}
+                                </p>
+                                <p className="text-xs mt-0.5 leading-relaxed">{receiptValidation.message}</p>
+                              </div>
+                            </div>
+
+                            {/* Tarjetas con Partes Importantes Resaltadas */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              {/* 1. Monto Detectado */}
+                              <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
+                                receiptValidation.amountMatches
+                                  ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                                  : 'bg-rose-50/70 border-rose-200 text-rose-950'
+                              }`}>
+                                <div className="flex items-center justify-between text-[11px] font-semibold opacity-90">
+                                  <span className="flex items-center gap-1.5">
+                                    <DollarSign className="h-3.5 w-3.5 text-emerald-700" /> Monto de la Transferencia
+                                  </span>
+                                  {receiptValidation.amountMatches ? (
+                                    <span className="text-emerald-700 font-bold bg-emerald-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                                      <Check className="h-3 w-3" /> Coincide
+                                    </span>
+                                  ) : (
+                                    <span className="text-rose-700 font-bold bg-rose-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                                      <AlertCircle className="h-3 w-3" /> No coincide
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-2 flex items-baseline justify-between">
+                                  <span className="text-base sm:text-lg font-black tracking-tight">
+                                    {receiptValidation.detectedAmount 
+                                      ? `$${receiptValidation.detectedAmount.toLocaleString('es-AR')}`
+                                      : 'No detectado'}
+                                  </span>
+                                  <span className="text-[10px] text-gray-500 font-medium">
+                                    Total: ${Math.round(finalTotal).toLocaleString('es-AR')}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* 2. Destinatario / Titular Detectado */}
+                              <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
+                                receiptValidation.recipientName
+                                  ? 'bg-blue-50/70 border-blue-200 text-blue-950'
+                                  : 'bg-gray-50 border-gray-200 text-gray-600'
+                              }`}>
+                                <div className="flex items-center justify-between text-[11px] font-semibold opacity-90">
+                                  <span className="flex items-center gap-1.5">
+                                    <User className="h-3.5 w-3.5 text-blue-700" /> Nombre / Destinatario
+                                  </span>
+                                  {receiptValidation.recipientName && (
+                                    <span className="text-blue-700 font-bold bg-blue-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                                      <Check className="h-3 w-3" /> Detectado
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-2">
+                                  <p className="text-xs sm:text-sm font-bold truncate">
+                                    {receiptValidation.recipientName || 'No detectado'}
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mt-0.5">Titular o cuenta receptora</p>
+                                </div>
+                              </div>
+
+                              {/* 3. Número de Transferencia / Operación */}
+                              <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
+                                receiptValidation.referenceNumber && receiptValidation.referenceNumber !== 'Detectado'
+                                  ? 'bg-purple-50/70 border-purple-200 text-purple-950'
+                                  : 'bg-gray-50 border-gray-200 text-gray-600'
+                              }`}>
+                                <div className="flex items-center justify-between text-[11px] font-semibold opacity-90">
+                                  <span className="flex items-center gap-1.5">
+                                    <Hash className="h-3.5 w-3.5 text-purple-700" /> N° de Transferencia / Op.
+                                  </span>
+                                  {receiptValidation.referenceNumber && (
+                                    <span className="text-purple-700 font-bold bg-purple-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                                      <Check className="h-3 w-3" /> Registrado
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-2">
+                                  <p className="text-xs sm:text-sm font-mono font-bold truncate">
+                                    {receiptValidation.referenceNumber ? `#${receiptValidation.referenceNumber}` : 'No detectado'}
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mt-0.5">Identificador de movimiento</p>
+                                </div>
+                              </div>
+
+                              {/* 4. Entidad Bancaria o Billetera */}
+                              <div className="p-2.5 rounded-xl border bg-amber-50/70 border-amber-200 text-amber-950 flex flex-col justify-between">
+                                <div className="flex items-center justify-between text-[11px] font-semibold opacity-90">
+                                  <span className="flex items-center gap-1.5">
+                                    <Building2 className="h-3.5 w-3.5 text-amber-800" /> Billetera o Banco
+                                  </span>
+                                  {receiptValidation.bankOrApp && (
+                                    <span className="text-amber-800 font-bold bg-amber-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                                      <Check className="h-3 w-3" /> OK
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-2">
+                                  <p className="text-xs sm:text-sm font-bold truncate">
+                                    {receiptValidation.bankOrApp || 'Billetera Virtual / Banco'}
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mt-0.5">Origen de los fondos</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1141,6 +1307,53 @@ export default function CheckoutPage() {
           <TePuedeInteresar />
         </div>
       </div>
+
+      {/* Lightbox / Modal de ampliación del comprobante */}
+      {isZoomModalOpen && receiptPreviewUrl && (
+        <div 
+          className="fixed inset-0 z-[999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsZoomModalOpen(false)}
+        >
+          <div 
+            className="relative max-w-3xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100 p-3 sm:p-4 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 px-2 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                <span className="text-sm font-bold text-gray-900">Comprobante de Transferencia Ampliado</span>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsZoomModalOpen(false)}
+                className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                title="Cerrar vista previa"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="overflow-auto max-h-[78vh] flex items-center justify-center p-3 bg-gray-950/5 rounded-2xl mt-3">
+              <img 
+                src={receiptPreviewUrl} 
+                alt="Comprobante en alta resolución" 
+                className="max-w-full max-h-[72vh] object-contain rounded-xl shadow-sm" 
+              />
+            </div>
+
+            <div className="pt-3 px-2 flex justify-between items-center text-xs text-gray-500">
+              <span className="truncate max-w-[250px]">{receiptFile?.name}</span>
+              <button
+                type="button"
+                onClick={() => setIsZoomModalOpen(false)}
+                className="bg-black text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-gray-800 transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
