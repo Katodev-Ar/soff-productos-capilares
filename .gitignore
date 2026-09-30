@@ -52,3 +52,5 @@ AUDITORIA_ARQUITECTURA_SISTEMA.md
 
 .vercel
 .env*
+
+*.traineddata

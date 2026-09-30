@@ -115,6 +115,19 @@ export default function CheckoutPage() {
     setPaymentNotice(null)
     if (!file) return
 
+    // Chequeo rápido de tamaño en el cliente (máximo 15 MB)
+    if (file.size > 15 * 1024 * 1024) {
+      const msg = 'El archivo es demasiado pesado (máximo 15 MB). Por favor sube una captura o comprobante más liviano.'
+      setReceiptValidation({
+        isValid: false,
+        isReceipt: false,
+        amountMatches: false,
+        message: msg
+      })
+      setPaymentNotice(msg)
+      return
+    }
+
     setIsValidatingReceipt(true)
     try {
       const data = new FormData()
@@ -125,17 +138,32 @@ export default function CheckoutPage() {
         method: 'POST',
         body: data
       })
+
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => null)
+        const errorMsg = errorJson?.message || `Error del servidor (${res.status}). Por favor sube una captura JPG/PNG o PDF de 1 página.`
+        setReceiptValidation({
+          isValid: false,
+          isReceipt: false,
+          amountMatches: false,
+          message: errorMsg
+        })
+        setPaymentNotice(errorMsg)
+        return
+      }
+
       const result = await res.json()
       setReceiptValidation(result)
       if (!result.isValid) {
         setPaymentNotice(result.message)
       }
     } catch (e: any) {
+      console.error('Error al validar comprobante:', e)
       setReceiptValidation({
         isValid: false,
         isReceipt: false,
         amountMatches: false,
-        message: 'No se pudo conectar con el detector de transferencias.'
+        message: 'No se pudo conectar con el detector de transferencias. Verifica tu conexión a internet.'
       })
     } finally {
       setIsValidatingReceipt(false)
