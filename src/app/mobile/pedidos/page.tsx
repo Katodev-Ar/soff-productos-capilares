@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { ShoppingBag, CheckCircle, Clock, XCircle, RefreshCw, FileImage, ChevronDown } from 'lucide-react'
+import { ShoppingBag, CheckCircle, Clock, XCircle, RefreshCw, FileImage, ChevronDown, AlertTriangle } from 'lucide-react'
 
 type OrderStatus = 'all' | 'pending' | 'completed' | 'cancelled'
 
@@ -195,15 +195,26 @@ export default function MobilePedidosPage() {
 
                     {/* Transfer Receipt */}
                     {isTransfer && (
-                      <a
-                        href={order.mp_payment_id}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 bg-blue-50 text-blue-600 rounded-xl p-3 text-sm font-medium active:bg-blue-100"
-                      >
-                        <FileImage className="h-5 w-5" />
-                        Ver comprobante de transferencia
-                      </a>
+                      <div className="space-y-2">
+                        <a
+                          href={order.mp_payment_id}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 bg-blue-50 text-blue-600 rounded-xl p-3 text-sm font-medium active:bg-blue-100"
+                        >
+                          <FileImage className="h-5 w-5" />
+                          Ver comprobante de transferencia
+                        </a>
+                        {order.receipt_warning && (
+                          <div className="bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-3 text-xs font-semibold flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-none" />
+                            <div>
+                              <p className="font-bold text-amber-950">⚠️ COMPROBANTE EN DUDA</p>
+                              <p className="mt-0.5 font-normal leading-relaxed">{order.receipt_warning}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {/* Change Status */}

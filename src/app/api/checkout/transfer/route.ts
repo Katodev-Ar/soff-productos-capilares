@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     const total = formData.get('total') as string
     const shippingAddress = formData.get('shippingAddress') as string
     let transferReference = (formData.get('transferReference') as string) || ''
+    const receiptWarning = (formData.get('receiptWarning') as string) || ''
 
     if (!file || !userId) {
       return NextResponse.json({ error: 'Faltan datos obligatorios para procesar el pedido.' }, { status: 400 })
@@ -32,14 +33,15 @@ export async function POST(request: NextRequest) {
       totalNumber
     )
 
-    if (!validation.isValid) {
+    // Solo rechazar si explícitamente NO es un comprobante (ej: póliza vehicular sin datos bancarios o PDF multipágina)
+    if (validation.allowSubmit === false) {
       return NextResponse.json(
         { error: validation.message || 'El comprobante subido no es válido.' },
         { status: 400 }
       )
     }
 
-    if (!transferReference && validation.referenceNumber) {
+    if (!transferReference && validation.referenceNumber && validation.referenceNumber !== 'Detectado' && validation.referenceNumber !== 'OK') {
       transferReference = validation.referenceNumber
     }
 
@@ -69,7 +71,10 @@ export async function POST(request: NextRequest) {
       parsedItems = itemsStr ? JSON.parse(itemsStr) : []
     } catch(e) {}
 
-    // 2. Create order in database with transfer reference
+    // Combinar advertencias si existen
+    const finalWarning = receiptWarning || validation.warningMessage || (validation.status === 'en_duda' ? 'Comprobante en duda: Atención de revisar manualmente por Sofia' : null)
+
+    // 2. Create order in database with transfer reference and warning if any
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -78,7 +83,8 @@ export async function POST(request: NextRequest) {
         status: 'pendiente',
         mp_payment_id: receiptUrl,
         transfer_reference: transferReference || 'Sin Nro Detectado',
-        shipping_address: shippingAddress
+        shipping_address: shippingAddress,
+        receipt_warning: finalWarning
       })
       .select()
       .single()
@@ -102,7 +108,8 @@ export async function POST(request: NextRequest) {
       success: true,
       orderId: order?.id,
       receiptUrl,
-      transferReference: transferReference || null
+      transferReference: transferReference || null,
+      receiptWarning: finalWarning
     })
   } catch (error: any) {
     console.error('Server error:', error)

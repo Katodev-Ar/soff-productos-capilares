@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { Package, Search, ExternalLink, CheckCircle, Clock, FileImage, XCircle } from 'lucide-react'
+import { Package, Search, ExternalLink, CheckCircle, Clock, FileImage, XCircle, AlertTriangle } from 'lucide-react'
 
 export default function AdminPedidosPage() {
   const router = useRouter()
@@ -176,6 +176,12 @@ export default function AdminPedidosPage() {
                                   <span className="text-[11px] font-mono font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded w-fit" title="N° de transferencia / operación">
                                     Op: #{order.transfer_reference}
                                   </span>
+                                )}
+                                {order.receipt_warning && (
+                                  <div className="mt-1 flex items-start gap-1 text-[11px] font-semibold text-amber-900 bg-amber-50 border border-amber-300 p-1.5 rounded-lg max-w-[280px]">
+                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 mt-0.5 flex-none" />
+                                    <span className="leading-snug">{order.receipt_warning}</span>
+                                  </div>
                                 )}
                               </div>
                             ) : (

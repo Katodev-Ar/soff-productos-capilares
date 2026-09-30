@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { 
   AlertCircle, 
+  AlertTriangle,
   ArrowLeft, 
   CreditCard, 
   PackageSearch, 
@@ -43,6 +44,7 @@ import {
   type DeliveryMethod 
 } from '@/lib/shipping'
 import { reverseGeocode, forwardGeocode } from '@/lib/geocoding'
+import { analyzeReceiptText, type ReceiptValidationResult } from '@/lib/receiptParser'
 
 const WHATSAPP_PHONE = '5493816253929'
 
@@ -105,21 +107,10 @@ export default function CheckoutPage() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isValidatingReceipt, setIsValidatingReceipt] = useState(false)
+  const [ocrProgress, setOcrProgress] = useState<number | null>(null)
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null)
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false)
-  const [receiptValidation, setReceiptValidation] = useState<{
-    isValid: boolean
-    isReceipt: boolean
-    amountMatches: boolean
-    detectedAmount?: number
-    expectedAmount?: number
-    referenceNumber?: string
-    recipientName?: string
-    bankOrApp?: string
-    confidence?: 'alta' | 'media' | 'baja'
-    pageCount?: number
-    message: string
-  } | null>(null)
+  const [receiptValidation, setReceiptValidation] = useState<ReceiptValidationResult | null>(null)
 
   const handleFileChange = async (file: File | null) => {
     // Revocar URL anterior si existía para evitar fugas de memoria
@@ -130,6 +121,7 @@ export default function CheckoutPage() {
     setReceiptFile(file)
     setReceiptValidation(null)
     setPaymentNotice(null)
+    setOcrProgress(null)
 
     if (!file) {
       setReceiptPreviewUrl(null)
@@ -148,8 +140,12 @@ export default function CheckoutPage() {
       const msg = 'El archivo es demasiado pesado (máximo 15 MB). Por favor sube una captura o comprobante más liviano.'
       setReceiptValidation({
         isValid: false,
+        allowSubmit: false,
+        status: 'invalido',
         isReceipt: false,
         amountMatches: false,
+        expectedAmount: Math.round(finalTotal),
+        confidence: 'alta',
         message: msg
       })
       setPaymentNotice(msg)
@@ -157,7 +153,52 @@ export default function CheckoutPage() {
     }
 
     setIsValidatingReceipt(true)
+
     try {
+      // 1. Si es imagen, intentar OCR en el navegador para máxima velocidad y confiabilidad
+      if (file.type.startsWith('image/')) {
+        setOcrProgress(20)
+        let recognizedText = ''
+        try {
+          const Tesseract = await import('tesseract.js')
+          setOcrProgress(40)
+          const worker = await Tesseract.createWorker('spa', 1, {
+            workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+            corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core-simd-lstm.wasm.js',
+            langPath: 'https://tessdata.projectnaptha.com/4.0.0_best',
+            logger: m => {
+              if (m.status === 'recognizing text' && typeof m.progress === 'number') {
+                setOcrProgress(Math.min(95, Math.round(40 + m.progress * 55)))
+              }
+            }
+          })
+          const ret = await worker.recognize(file)
+          await worker.terminate()
+          recognizedText = ret.data.text || ''
+        } catch (workerErr) {
+          console.warn('OCR en worker CDN no disponible, probando worker local:', workerErr)
+          try {
+            const Tesseract = await import('tesseract.js')
+            const worker = await Tesseract.createWorker('spa')
+            const ret = await worker.recognize(file)
+            await worker.terminate()
+            recognizedText = ret.data.text || ''
+          } catch (localErr) {
+            console.warn('OCR en cliente falló:', localErr)
+          }
+        }
+
+        if (recognizedText.trim().length > 0) {
+          const result = analyzeReceiptText(recognizedText, Math.round(finalTotal))
+          setReceiptValidation(result)
+          if (result.status === 'en_duda' && result.message) {
+            setPaymentNotice(result.message)
+          }
+          return
+        }
+      }
+
+      // 2. Si es PDF o si el OCR del navegador no obtuvo texto:
       const data = new FormData()
       data.append('receipt', file)
       data.append('expectedTotal', String(Math.round(finalTotal)))
@@ -167,34 +208,42 @@ export default function CheckoutPage() {
         body: data
       })
 
-      if (!res.ok) {
-        const errorJson = await res.json().catch(() => null)
-        const errorMsg = errorJson?.message || `Error del servidor (${res.status}). Por favor sube una captura JPG/PNG o PDF de 1 página.`
+      if (res.ok) {
+        const result: ReceiptValidationResult = await res.json()
+        setReceiptValidation(result)
+        if (result.status === 'en_duda' && result.message) {
+          setPaymentNotice(result.message)
+        }
+      } else {
+        // Fallback seguro: permitir enviar con aviso al administrador
         setReceiptValidation({
-          isValid: false,
-          isReceipt: false,
+          isValid: true,
+          allowSubmit: true,
+          status: 'en_duda',
+          isReceipt: true,
           amountMatches: false,
-          message: errorMsg
+          expectedAmount: Math.round(finalTotal),
+          confidence: 'media',
+          message: 'Comprobante recibido. Sofia verificará manualmente los datos antes de despachar.',
+          warningMessage: 'Comprobante en duda: Revisión manual requerida'
         })
-        setPaymentNotice(errorMsg)
-        return
-      }
-
-      const result = await res.json()
-      setReceiptValidation(result)
-      if (!result.isValid) {
-        setPaymentNotice(result.message)
       }
     } catch (e: any) {
       console.error('Error al validar comprobante:', e)
       setReceiptValidation({
-        isValid: false,
-        isReceipt: false,
+        isValid: true,
+        allowSubmit: true,
+        status: 'en_duda',
+        isReceipt: true,
         amountMatches: false,
-        message: 'No se pudo conectar con el detector de transferencias. Verifica tu conexión a internet.'
+        expectedAmount: Math.round(finalTotal),
+        confidence: 'media',
+        message: 'Comprobante recibido. Sofia verificará manualmente los datos antes de despachar.',
+        warningMessage: 'Comprobante en duda: No se pudo conectar con el reconocedor automático'
       })
     } finally {
       setIsValidatingReceipt(false)
+      setOcrProgress(null)
     }
   }
 
@@ -362,8 +411,11 @@ export default function CheckoutPage() {
       
       body.append('shippingAddress', fullAddress)
       body.append('items', JSON.stringify(items))
-      if (receiptValidation?.referenceNumber) {
+      if (receiptValidation?.referenceNumber && receiptValidation.referenceNumber !== 'Detectado' && receiptValidation.referenceNumber !== 'OK') {
         body.append('transferReference', receiptValidation.referenceNumber)
+      }
+      if (receiptValidation?.warningMessage) {
+        body.append('receiptWarning', receiptValidation.warningMessage)
       }
 
       const res = await fetch('/api/checkout/transfer', { method: 'POST', body })
@@ -1033,7 +1085,11 @@ export default function CheckoutPage() {
                             <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-none"></div>
                             <div className="flex-1">
                               <p className="font-bold text-[12px]">Detector inteligente en acción</p>
-                              <p className="text-[11px] text-blue-700">Leyendo imagen y extrayendo monto, titular y N° de transferencia...</p>
+                              <p className="text-[11px] text-blue-700">
+                                {ocrProgress !== null 
+                                  ? `Escaneando comprobante y leyendo datos... (${ocrProgress}%)` 
+                                  : 'Leyendo imagen y extrayendo monto, titular y N° de transferencia...'}
+                              </p>
                             </div>
                           </div>
                         )}
@@ -1043,18 +1099,26 @@ export default function CheckoutPage() {
                           <div className="mt-3 space-y-2.5">
                             {/* Banner de Estado */}
                             <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
-                              receiptValidation.isValid 
-                                ? 'bg-emerald-50 border-emerald-300 text-emerald-950' 
+                              receiptValidation.status === 'valido'
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                                : receiptValidation.status === 'en_duda'
+                                ? 'bg-amber-50 border-amber-300 text-amber-950'
                                 : 'bg-rose-50 border-rose-300 text-rose-950'
                             }`}>
-                              {receiptValidation.isValid ? (
+                              {receiptValidation.status === 'valido' ? (
                                 <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5 flex-none" />
+                              ) : receiptValidation.status === 'en_duda' ? (
+                                <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-none" />
                               ) : (
                                 <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5 flex-none" />
                               )}
                               <div className="flex-1">
                                 <p className="font-bold text-xs sm:text-sm">
-                                  {receiptValidation.isValid ? '✓ Comprobante Verificado con Éxito' : '✕ Comprobante no válido'}
+                                  {receiptValidation.status === 'valido' 
+                                    ? '✓ Comprobante Verificado con Éxito' 
+                                    : receiptValidation.status === 'en_duda'
+                                    ? '⚠️ Comprobante con observaciones (Revisión manual)'
+                                    : '✕ Archivo no válido'}
                                 </p>
                                 <p className="text-xs mt-0.5 leading-relaxed">{receiptValidation.message}</p>
                               </div>
@@ -1066,6 +1130,8 @@ export default function CheckoutPage() {
                               <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
                                 receiptValidation.amountMatches
                                   ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                                  : receiptValidation.detectedAmount
+                                  ? 'bg-amber-50/70 border-amber-200 text-amber-950'
                                   : 'bg-rose-50/70 border-rose-200 text-rose-950'
                               }`}>
                                 <div className="flex items-center justify-between text-[11px] font-semibold opacity-90">
@@ -1076,27 +1142,38 @@ export default function CheckoutPage() {
                                     <span className="text-emerald-700 font-bold bg-emerald-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
                                       <Check className="h-3 w-3" /> Coincide
                                     </span>
+                                  ) : receiptValidation.detectedAmount ? (
+                                    <span className="text-amber-800 font-bold bg-amber-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                                      <AlertTriangle className="h-3 w-3" /> Monto diferente
+                                    </span>
                                   ) : (
                                     <span className="text-rose-700 font-bold bg-rose-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
                                       <AlertCircle className="h-3 w-3" /> No coincide
                                     </span>
                                   )}
                                 </div>
-                                <div className="mt-2 flex items-baseline justify-between">
-                                  <span className="text-base sm:text-lg font-black tracking-tight">
-                                    {receiptValidation.detectedAmount 
-                                      ? `$${receiptValidation.detectedAmount.toLocaleString('es-AR')}`
-                                      : 'No detectado'}
-                                  </span>
-                                  <span className="text-[10px] text-gray-500 font-medium">
-                                    Total: ${Math.round(finalTotal).toLocaleString('es-AR')}
+                                <div className="mt-2 space-y-1">
+                                  <div className="flex items-baseline justify-between">
+                                    <span className="text-base sm:text-lg font-black tracking-tight">
+                                      {receiptValidation.detectedAmount 
+                                        ? `$${receiptValidation.detectedAmount.toLocaleString('es-AR')}`
+                                        : 'No detectado'}
+                                    </span>
+                                    {receiptValidation.detectedAmount && !receiptValidation.amountMatches && (
+                                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                                        Dice: ${receiptValidation.detectedAmount.toLocaleString('es-AR')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-gray-500 font-medium block">
+                                    Debería ser: ${Math.round(finalTotal).toLocaleString('es-AR')}
                                   </span>
                                 </div>
                               </div>
 
                               {/* 2. Destinatario / Titular Detectado */}
                               <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
-                                receiptValidation.recipientName
+                                receiptValidation.recipientName && receiptValidation.recipientName !== 'No especificado'
                                   ? 'bg-blue-50/70 border-blue-200 text-blue-950'
                                   : 'bg-gray-50 border-gray-200 text-gray-600'
                               }`}>
@@ -1104,7 +1181,7 @@ export default function CheckoutPage() {
                                   <span className="flex items-center gap-1.5">
                                     <User className="h-3.5 w-3.5 text-blue-700" /> Nombre / Destinatario
                                   </span>
-                                  {receiptValidation.recipientName && (
+                                  {receiptValidation.recipientName && receiptValidation.recipientName !== 'No especificado' && (
                                     <span className="text-blue-700 font-bold bg-blue-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
                                       <Check className="h-3 w-3" /> Detectado
                                     </span>
@@ -1120,7 +1197,7 @@ export default function CheckoutPage() {
 
                               {/* 3. Número de Transferencia / Operación */}
                               <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
-                                receiptValidation.referenceNumber && receiptValidation.referenceNumber !== 'Detectado'
+                                receiptValidation.referenceNumber && receiptValidation.referenceNumber !== 'Detectado' && receiptValidation.referenceNumber !== 'OK'
                                   ? 'bg-purple-50/70 border-purple-200 text-purple-950'
                                   : 'bg-gray-50 border-gray-200 text-gray-600'
                               }`}>
@@ -1128,7 +1205,7 @@ export default function CheckoutPage() {
                                   <span className="flex items-center gap-1.5">
                                     <Hash className="h-3.5 w-3.5 text-purple-700" /> N° de Transferencia / Op.
                                   </span>
-                                  {receiptValidation.referenceNumber && (
+                                  {receiptValidation.referenceNumber && receiptValidation.referenceNumber !== 'Detectado' && receiptValidation.referenceNumber !== 'OK' && (
                                     <span className="text-purple-700 font-bold bg-purple-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
                                       <Check className="h-3 w-3" /> Registrado
                                     </span>
@@ -1136,7 +1213,9 @@ export default function CheckoutPage() {
                                 </div>
                                 <div className="mt-2">
                                   <p className="text-xs sm:text-sm font-mono font-bold truncate">
-                                    {receiptValidation.referenceNumber ? `#${receiptValidation.referenceNumber}` : 'No detectado'}
+                                    {receiptValidation.referenceNumber && receiptValidation.referenceNumber !== 'Detectado' && receiptValidation.referenceNumber !== 'OK' 
+                                      ? `#${receiptValidation.referenceNumber}` 
+                                      : 'A verificar'}
                                   </p>
                                   <p className="text-[10px] text-gray-500 mt-0.5">Identificador de movimiento</p>
                                 </div>
@@ -1170,7 +1249,7 @@ export default function CheckoutPage() {
 
                   <button
                     onClick={handleTransferCheckout}
-                    disabled={!receiptFile || isValidatingReceipt || !receiptValidation?.isValid || isProcessing}
+                    disabled={!receiptFile || isValidatingReceipt || receiptValidation?.allowSubmit === false || isProcessing}
                     className="flex w-full items-center justify-center gap-2 bg-black text-white py-4 rounded-xl font-bold hover:bg-gray-800 transition-colors mt-4 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md"
                   >
                     {isProcessing ? 'Procesando...' : 'Finalizar Pedido'}
