@@ -45,6 +45,7 @@ import {
 } from '@/lib/shipping'
 import { reverseGeocode, forwardGeocode } from '@/lib/geocoding'
 import { analyzeReceiptText, type ReceiptValidationResult } from '@/lib/receiptParser'
+import { BUSINESS_BANK_CONFIG } from '@/lib/paymentConfig'
 
 const WHATSAPP_PHONE = '5493816253929'
 
@@ -189,7 +190,7 @@ export default function CheckoutPage() {
         }
 
         if (recognizedText.trim().length > 0) {
-          const result = analyzeReceiptText(recognizedText, Math.round(finalTotal))
+          const result = analyzeReceiptText(recognizedText, Math.round(finalTotal), 1, BUSINESS_BANK_CONFIG)
           setReceiptValidation(result)
           if (result.status === 'en_duda' && result.message) {
             setPaymentNotice(result.message)
@@ -431,6 +432,23 @@ export default function CheckoutPage() {
         if (couponData) {
           await supabase.from('coupons').update({ current_uses: couponData.current_uses + 1 }).eq('code', couponCode)
         }
+      }
+
+      // Vincular dirección a la cuenta para futuros pedidos
+      if (formData.address) {
+        const addressObj = {
+          address: streetWithNumber,
+          city: formData.city,
+          cp: formData.cp,
+          map_url: mapCoordinates ? `https://www.google.com/maps?q=${mapCoordinates.lat},${mapCoordinates.lng}` : null
+        }
+        await supabase.from('profiles').update({
+          address: streetWithNumber,
+          city: formData.city,
+          postal_code: formData.cp,
+          phone: formData.phone || undefined,
+          addresses: [addressObj]
+        }).eq('id', userData.user.id)
       }
 
       router.push('/checkout/exito')
@@ -969,15 +987,15 @@ export default function CheckoutPage() {
                   <div className="bg-white rounded-xl p-4 space-y-3 border border-green-100">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Titular</span>
-                      <span className="font-semibold text-gray-900">Cristian Benjamin Corbalan</span>
+                      <span className="font-semibold text-gray-900">{BUSINESS_BANK_CONFIG.titular}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Alias</span>
-                      <span className="font-mono font-semibold text-gray-900">corbalan.cristian.b</span>
+                      <span className="font-mono font-semibold text-gray-900">{BUSINESS_BANK_CONFIG.alias}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">CVU</span>
-                      <span className="font-mono text-xs font-semibold text-gray-900">0000003100071749630487</span>
+                      <span className="font-mono text-xs font-semibold text-gray-900">{BUSINESS_BANK_CONFIG.cvu}</span>
                     </div>
                   </div>
                   
@@ -1173,25 +1191,39 @@ export default function CheckoutPage() {
 
                               {/* 2. Destinatario / Titular Detectado */}
                               <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
-                                receiptValidation.recipientName && receiptValidation.recipientName !== 'No especificado'
+                                receiptValidation.recipientMatches
                                   ? 'bg-blue-50/70 border-blue-200 text-blue-950'
+                                  : receiptValidation.recipientName && receiptValidation.recipientName !== 'No especificado'
+                                  ? 'bg-amber-50/70 border-amber-200 text-amber-950'
                                   : 'bg-gray-50 border-gray-200 text-gray-600'
                               }`}>
                                 <div className="flex items-center justify-between text-[11px] font-semibold opacity-90">
                                   <span className="flex items-center gap-1.5">
                                     <User className="h-3.5 w-3.5 text-blue-700" /> Nombre / Destinatario
                                   </span>
-                                  {receiptValidation.recipientName && receiptValidation.recipientName !== 'No especificado' && (
-                                    <span className="text-blue-700 font-bold bg-blue-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
-                                      <Check className="h-3 w-3" /> Detectado
+                                  {receiptValidation.recipientMatches ? (
+                                    <span className="text-emerald-700 font-bold bg-emerald-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                                      <Check className="h-3 w-3" /> Coincide
+                                    </span>
+                                  ) : receiptValidation.recipientName && receiptValidation.recipientName !== 'No especificado' ? (
+                                    <span className="text-amber-800 font-bold bg-amber-100/80 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                                      <AlertTriangle className="h-3 w-3" /> No coincide
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-600 font-bold bg-gray-100 px-1.5 py-0.5 rounded text-[10px]">
+                                      A verificar
                                     </span>
                                   )}
                                 </div>
-                                <div className="mt-2">
+                                <div className="mt-2 space-y-0.5">
                                   <p className="text-xs sm:text-sm font-bold truncate">
                                     {receiptValidation.recipientName || 'No detectado'}
                                   </p>
-                                  <p className="text-[10px] text-gray-500 mt-0.5">Titular o cuenta receptora</p>
+                                  <p className="text-[10px] text-gray-500 truncate">
+                                    {receiptValidation.recipientMatches
+                                      ? 'Titular verificado de la tienda'
+                                      : `Debería ser: ${receiptValidation.expectedTitular || BUSINESS_BANK_CONFIG.titular}`}
+                                  </p>
                                 </div>
                               </div>
 
