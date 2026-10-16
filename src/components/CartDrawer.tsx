@@ -5,16 +5,19 @@ import { useState } from 'react'
 import { PackageSearch, ShoppingBag, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
 import { FREE_SHIPPING_THRESHOLD, formatPrice } from '@/lib/catalog'
+import { CHANNEL_LABELS } from '@/lib/commercialPricingPolicy'
 import { TePuedeInteresar } from './TePuedeInteresar'
 
 export default function CartDrawer() {
-  const { isCartOpen, setIsCartOpen, items, updateQuantity, removeFromCart, cartSubtotal, cartTotal, cartCount, volumeDiscountPercentage, freeShippingThreshold } = useCart()
+  const { isCartOpen, setIsCartOpen, items, updateQuantity, removeFromCart, cartSubtotal, cartTotal, cartCount, volumeDiscountPercentage, freeShippingThreshold, customerChannel, commercialTerms, minimumMet, remainingMinimum, pricingStatus, pricingError, refreshPrices } = useCart()
 
   if (!isCartOpen) return null
 
   const threshold = freeShippingThreshold || FREE_SHIPPING_THRESHOLD
-  const progressPercentage = Math.min(100, (cartTotal / threshold) * 100)
-  const remainingForFreeShipping = threshold - cartTotal
+  const shippingEligible = !!commercialTerms && commercialTerms.shippingMode !== 'disabled'
+  const shippingAlways = !!commercialTerms && commercialTerms.shippingMode === 'always'
+  const progressPercentage = pricingStatus === 'ready' && shippingEligible ? (shippingAlways ? 100 : Math.min(100, (cartTotal / threshold) * 100)) : 0
+  const remainingForFreeShipping = shippingAlways ? 0 : threshold - cartTotal
 
   return (
     <>
@@ -36,8 +39,15 @@ export default function CartDrawer() {
           </button>
         </div>
 
+        <div className="border-b bg-slate-50 px-4 py-3 text-xs text-slate-700">
+          Lista asignada: <strong>{CHANNEL_LABELS[customerChannel]}</strong>
+          {pricingStatus !== 'ready' && <div role="status" className="mt-2 text-amber-800">
+            {pricingStatus === 'checking' ? 'Verificando precios y existencias…' : pricingError || 'No se pudieron verificar los importes.'}
+            {pricingStatus === 'error' && <button type="button" onClick={() => void refreshPrices()} className="ml-2 underline font-semibold">Reintentar</button>}
+          </div>}
+        </div>
         {/* Barra de envío gratis */}
-        <div className="p-4 bg-white border-b">
+        {pricingStatus === 'ready' && shippingEligible && <div className="p-4 bg-white border-b">
           {remainingForFreeShipping > 0 ? (
             <p className="text-sm text-gray-600 mb-2 font-medium text-center">
               Te faltan <span className="font-bold text-black">{formatPrice(remainingForFreeShipping)}</span> para <span className="font-bold">ENVÍO GRATIS</span>
@@ -53,7 +63,7 @@ export default function CartDrawer() {
               style={{ width: `${progressPercentage}%` }} 
             />
           </div>
-        </div>
+        </div>}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
@@ -78,6 +88,7 @@ export default function CartDrawer() {
                   onRemove={() => removeFromCart(item.id)}
                   onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
                   onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
+                  showPrice={pricingStatus === 'ready'}
                 />
               ))}
               
@@ -91,7 +102,7 @@ export default function CartDrawer() {
           <div className="p-6 border-t bg-gray-50">
             <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
               <span>Subtotal</span>
-              <span>{formatPrice(cartSubtotal)}</span>
+              <span>{pricingStatus === 'ready' ? formatPrice(cartSubtotal) : 'A verificar'}</span>
             </div>
             
             {volumeDiscountPercentage > 0 && (
@@ -103,17 +114,22 @@ export default function CartDrawer() {
             
             <div className="flex justify-between items-center mb-4 text-lg border-t border-gray-200 pt-3 mt-3">
               <span className="font-medium text-gray-700">Total</span>
-              <span className="font-bold text-black">{formatPrice(cartTotal)}</span>
+              <span className="font-bold text-black">{pricingStatus === 'ready' ? formatPrice(cartTotal) : 'A verificar'}</span>
             </div>
             
+            {pricingStatus === 'ready' && !minimumMet && <p className="text-sm text-red-700 font-semibold mb-3" role="alert">
+              Compra mínima para {CHANNEL_LABELS[customerChannel]}: faltan {formatPrice(remainingMinimum)} en productos.
+            </p>}
             <p className="text-[11px] text-gray-500 mb-6 text-center">Impuestos incluidos. Los gastos de envío se calculan en la pantalla de pago.</p>
-            <Link 
+            {pricingStatus === 'ready' && minimumMet ? <Link
               href="/checkout"
               onClick={() => setIsCartOpen(false)}
               className="w-full block text-center bg-[#c1272d] text-white py-4 font-bold uppercase tracking-widest text-sm hover:bg-black transition-colors rounded"
             >
               Ir al checkout
-            </Link>
+            </Link> : <button type="button" disabled className="w-full bg-gray-300 text-gray-600 py-4 font-bold rounded cursor-not-allowed">
+              Revisá el mínimo y los precios antes de continuar
+            </button>}
           </div>
         )}
       </div>
@@ -126,9 +142,10 @@ type CartLineItemProps = {
   onRemove: () => void
   onDecrease: () => void
   onIncrease: () => void
+  showPrice: boolean
 }
 
-function CartLineItem({ item, onRemove, onDecrease, onIncrease }: CartLineItemProps) {
+function CartLineItem({ item, onRemove, onDecrease, onIncrease, showPrice }: CartLineItemProps) {
   const isAtStockLimit = item.stock != null && item.quantity >= item.stock
 
   return (
@@ -159,7 +176,7 @@ function CartLineItem({ item, onRemove, onDecrease, onIncrease }: CartLineItemPr
             </button>
           </div>
           <div className="text-sm font-bold text-black">
-            {formatPrice(item.price * item.quantity)}
+            {showPrice ? formatPrice(item.price * item.quantity) : 'A verificar'}
           </div>
         </div>
         {isAtStockLimit && <p className="mt-1 text-[11px] font-medium text-[#c1272d]">Stock máximo disponible</p>}

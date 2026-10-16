@@ -57,3 +57,12 @@ AUDITORIA_ARQUITECTURA_SISTEMA.md
 
 *.zip
 staging_export/
+
+# SOFF - sistema de parches adaptado a repositorio GitHub raiz
+!tools/soff_patcher.py
+!qa/soff_final_check.py
+.soff/backups/
+.soff/setup_backups/
+.soff/qa/
+.soff/parches/
+PARCHES/

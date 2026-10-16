@@ -41,3 +41,28 @@
 - Fecha de revisión: ______________
 - Incidentes críticos abiertos: ______________
 - Firma / constancia: ______________
+
+## P015 — Comercial
+- [ ] Comparar cambios P015 con código en Vercel y respaldar.
+- [ ] Aplicar migración P015 en staging, tras migraciones previas, y verificar RLS.
+- [ ] Probar solicitudes, duplicados, aprobación/rechazo y seguridad de perfiles.
+- [ ] Validar precios de los cuatro canales con carrito/checkout reales.
+- [ ] Confirmar costos reales y márgenes (sin asumir que price_base sea costo).
+- [ ] Definir reglas de descuentos, cupones y mínimos por canal antes de comercializar.
+- [ ] Desplegar Vercel recién con SQL y validaciones completas; no habilitar cobros aún por mera compilación.
+
+### P016 — Política comercial y recotización del carrito
+- [ ] Aplicar P016 sobre P015 (1.0.15), ejecutar control local de integridad y compilar para Vercel.
+- [ ] Confirmar con el titular política transitoria: minorista 5%/10% y cupones, sin promociones acumulables para mayorista/revendedor/peluquero.
+- [ ] Ensayar cuatro clientes aprobados + invitado, cambio de rol, sesión, recotización en foco, stock agotado y caída de API.
+- [ ] Verificar que el servidor rechace cupones especiales incluso enviados manualmente y que el precio no dependa de `localStorage`.
+- [ ] Comprobar que el comprobante de transferencia anterior se invalide si varía el importe.
+- [ ] Verificar P015/P011 + migraciones anteriores en Supabase antes de lanzar.
+
+### P017 — Condiciones comerciales configurables
+- [ ] Instalar P017 **sobre v1.0.16**, verificar hashes, ejecutar pruebas Node y compilar Next.js.
+- [ ] Aplicar SQL `20261016_p017_channel_terms.sql` después de P015 **en staging**, sin reejecutar semillas destructivas.
+- [ ] Probar 4 usuarios aprobados más visitante, mínimos, escalones, cupones, envío gratis por lista y cambios simultáneos.
+- [ ] Comprobar que no se expongan otras listas ni condiciones administrativas en la API pública, y que RLS bloquee edición sin rol admin.
+- [ ] Confirmar en servidor pagos con importes y descuentos recalculados y bloqueo al faltar SQL.
+- [ ] Aprobar importes mínimos/reglas por parte del titular antes de producción.

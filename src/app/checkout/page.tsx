@@ -35,6 +35,7 @@ import {
   Eye
 } from 'lucide-react'
 import { FREE_SHIPPING_THRESHOLD, formatPrice } from '@/lib/catalog'
+import { CHANNEL_LABELS, couponAllowedFor, hasFreeShipping } from '@/lib/commercialPricingPolicy'
 import { TePuedeInteresar } from '@/components/TePuedeInteresar'
 import { MapSelector } from '@/components/MapSelectorDynamic'
 import { 
@@ -51,7 +52,8 @@ const WHATSAPP_PHONE = '5493816253929'
 
 export default function CheckoutPage() {
   const { 
-    items, 
+    items,
+    customerChannel, commercialTerms, minimumMet, remainingMinimum, pricingStatus, pricingError, refreshPrices,
     cartSubtotal, 
     cartTotal, 
     volumeDiscountPercentage,
@@ -90,7 +92,7 @@ export default function CheckoutPage() {
   
   // Dynamic Shipping Calculation
   const threshold = freeShippingThreshold || FREE_SHIPPING_THRESHOLD
-  const isFreeShipping = cartTotal >= threshold
+  const isFreeShipping = !!commercialTerms && hasFreeShipping(cartTotal,commercialTerms)
   const shippingEstimate = (deliveryMethod === 'delivery' && mapCoordinates)
     ? estimateShippingCost(mapCoordinates.lat, mapCoordinates.lng, isFreeShipping)
     : null
@@ -114,8 +116,26 @@ export default function CheckoutPage() {
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null)
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false)
   const [receiptValidation, setReceiptValidation] = useState<ReceiptValidationResult | null>(null)
+  const previousTotal = useRef<number | null>(null)
+
+  // Un comprobante validado para un importe anterior no debe reutilizarse.
+  useEffect(() => {
+    // No invalidar un comprobante por el estado temporal «verificando».
+    if (pricingStatus !== 'ready') return
+    if (previousTotal.current !== null && Math.abs(previousTotal.current - finalTotal) > 0.009) {
+      setReceiptFile(null)
+      setReceiptValidation(null)
+      setPaymentNotice('El total cambió. Verificá el importe y volvé a subir el comprobante, si corresponde.')
+      setReceiptPreviewUrl(url => { if (url) URL.revokeObjectURL(url); return null })
+    }
+    previousTotal.current = finalTotal
+  }, [finalTotal, pricingStatus])
 
   const handleFileChange = async (file: File | null) => {
+    if (pricingStatus !== 'ready') {
+      setPaymentNotice('El carrito todavía no tiene precios verificados.')
+      return
+    }
     // Revocar URL anterior si existía para evitar fugas de memoria
     if (receiptPreviewUrl) {
       URL.revokeObjectURL(receiptPreviewUrl)
@@ -334,10 +354,18 @@ export default function CheckoutPage() {
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault()
+    if (pricingStatus !== 'ready' || !minimumMet) {
+      setPaymentNotice(!minimumMet && pricingStatus === 'ready' ? `Faltan $${remainingMinimum.toLocaleString('es-AR')} para alcanzar la compra mínima.` : 'No podés continuar hasta verificar precios y existencias.')
+      return
+    }
     setStep(2)
   }
 
   const applyCoupon = async () => {
+    if (!couponAllowedFor(customerChannel,commercialTerms)) {
+      setCouponError('Los cupones minoristas no se aplican a las listas comerciales.')
+      return
+    }
     if (!couponInput.trim()) return
     setCouponLoading(true)
     setCouponError('')
@@ -371,10 +399,17 @@ export default function CheckoutPage() {
   }
 
   const handleTransferCheckout = async () => {
-    if (!receiptFile) return
+    if (!receiptFile || pricingStatus !== 'ready' || !minimumMet) {
+      setPaymentNotice('Primero verificá los precios de tu carrito.')
+      return
+    }
     setIsProcessing(true)
-    
+
     try {
+      // Confirmar otra vez antes de procesar un comprobante. No autoriza cobro
+      // si cambiaron el rol, stock o importes desde que se mostró el carrito.
+      const unchanged = await refreshPrices()
+      if (!unchanged) throw new Error('Cambió tu lista, algún precio o el stock. Revisá el nuevo total antes de pagar.')
       const { data: userData } = await supabase.auth.getUser()
       if (!userData?.user) {
         setPaymentNotice('Necesitás iniciar sesión para finalizar el pedido.')
@@ -500,6 +535,16 @@ export default function CheckoutPage() {
           <Link href="/productos" className="text-sm text-gray-500 hover:text-black flex items-center">
             <ArrowLeft size={16} className="mr-1" /> Volver a la tienda
           </Link>
+        </div>
+
+        <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700" role="status">
+          Lista comercial: <strong>{CHANNEL_LABELS[customerChannel]}</strong>
+          {pricingStatus !== 'ready' && <p className="mt-1 text-amber-900">
+            {pricingStatus === 'checking' ? 'Comprobando precios y stock…' : pricingError || 'No se pudo verificar el carrito.'}
+            {pricingStatus === 'error' && <button type="button" className="ml-2 font-bold underline" onClick={() => void refreshPrices()}>Reintentar</button>}
+          </p>}
+          {commercialTerms && !couponAllowedFor(customerChannel,commercialTerms) && <p className="mt-1 text-xs text-slate-600">Esta lista no admite cupones. Los descuentos por volumen se rigen por sus condiciones configuradas.</p>}
+          {pricingStatus === 'ready' && !minimumMet && <p className="mt-1 font-semibold text-sm text-red-700">Compra mínima: faltan {formatPrice(remainingMinimum)} en productos.</p>}
         </div>
 
         {/* Interactive Animated Stepper Timeline */}
@@ -936,7 +981,8 @@ export default function CheckoutPage() {
             </div>
 
             <button 
-              type="submit" 
+              type="submit"
+              disabled={pricingStatus !== 'ready'}
               className="w-full bg-black text-white py-4 font-bold uppercase tracking-widest text-sm hover:bg-gray-800 rounded-xl transition-all shadow-md"
             >
               Continuar al Pago
@@ -1033,7 +1079,7 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex justify-between text-lg font-bold border-t border-green-100 pt-2 mt-2">
                       <span className="text-gray-900">Total a transferir</span>
-                      <span className="text-green-700">${Math.round(finalTotal).toLocaleString('es-AR')}</span>
+                      <span className="text-green-700">{pricingStatus === 'ready' ? `$${Math.round(finalTotal).toLocaleString('es-AR')}` : 'A verificar'}</span>
                     </div>
                   </div>
 
@@ -1286,7 +1332,7 @@ export default function CheckoutPage() {
 
                   <button
                     onClick={handleTransferCheckout}
-                    disabled={!receiptFile || isValidatingReceipt || receiptValidation?.allowSubmit === false || isProcessing}
+                    disabled={pricingStatus !== 'ready' || !receiptFile || isValidatingReceipt || receiptValidation?.allowSubmit === false || isProcessing}
                     className="flex w-full items-center justify-center gap-2 bg-black text-white py-4 rounded-xl font-bold hover:bg-gray-800 transition-colors mt-4 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md"
                   >
                     {isProcessing ? 'Procesando...' : 'Finalizar Pedido'}
@@ -1326,7 +1372,7 @@ export default function CheckoutPage() {
                   </div>
                   <span className="ml-3.5 text-xs font-semibold line-clamp-2 max-w-[150px] text-gray-800">{item.name}</span>
                 </div>
-                <span className="text-sm font-bold text-gray-900">{formatPrice(item.price * item.quantity)}</span>
+                <span className="text-sm font-bold text-gray-900">{pricingStatus === 'ready' ? formatPrice(item.price * item.quantity) : 'A verificar'}</span>
               </div>
             ))}
           </div>
@@ -1339,12 +1385,13 @@ export default function CheckoutPage() {
                    type="text" 
                    value={couponInput}
                    onChange={e => setCouponInput(e.target.value.toUpperCase())}
-                   placeholder="Cupón de descuento"
+                   placeholder={couponAllowedFor(customerChannel,commercialTerms) ? 'Cupón de descuento' : 'No disponible para esta lista'}
+                   disabled={!couponAllowedFor(customerChannel)}
                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black uppercase font-medium bg-white"
                  />
                  <button 
                    onClick={applyCoupon}
-                   disabled={couponLoading || !couponInput.trim()}
+                   disabled={pricingStatus !== 'ready' || !couponAllowedFor(customerChannel,commercialTerms) || couponLoading || !couponInput.trim()}
                    className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-300 transition-colors disabled:opacity-50"
                  >
                    Aplicar
@@ -1367,7 +1414,7 @@ export default function CheckoutPage() {
           <div className="border-t border-gray-200 py-4 space-y-2.5">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Subtotal</span>
-              <span className="font-medium text-gray-900">{formatPrice(cartSubtotal)}</span>
+              <span className="font-medium text-gray-900">{pricingStatus === 'ready' ? formatPrice(cartSubtotal) : 'A verificar'}</span>
             </div>
             
             {/* Discount Lines */}
@@ -1417,7 +1464,7 @@ export default function CheckoutPage() {
 
           <div className="border-t border-gray-200 pt-4 flex justify-between items-end">
             <span className="text-base text-gray-700 font-semibold">Total a pagar</span>
-            <span className="text-2xl font-black text-black">{formatPrice(finalTotal)}</span>
+            <span className="text-2xl font-black text-black">{pricingStatus === 'ready' ? formatPrice(finalTotal) : 'A verificar'}</span>
           </div>
           
           <TePuedeInteresar />

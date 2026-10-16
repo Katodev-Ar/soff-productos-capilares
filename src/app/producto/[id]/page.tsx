@@ -10,7 +10,6 @@ import { useCart } from '@/context/CartContext'
 import { useFavorites } from '@/context/FavoritesContext'
 import { supabase } from '@/lib/supabase/client'
 import {
-  FREE_SHIPPING_THRESHOLD,
   PRODUCT_SELECT,
   formatPrice,
   getAvailableStock,
@@ -224,7 +223,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             <div className="mb-8 grid grid-cols-2 gap-4">
               <div className="flex items-center space-x-3 text-sm text-gray-600">
                 <Truck size={20} className="text-gray-400" />
-                <span>Envío gratis desde {formatPrice(FREE_SHIPPING_THRESHOLD)}</span>
+                <span>Envío gratis según las condiciones de tu categoría</span>
               </div>
               <div className="flex items-center space-x-3 text-sm text-gray-600">
                 <ShieldCheck size={20} className="text-gray-400" />

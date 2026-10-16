@@ -38,7 +38,7 @@ export default function MayoristasPage() {
           </h3>
           
           <p className="text-[#6d5b51] text-lg md:text-xl leading-relaxed mb-10 opacity-90">
-            Empezá a revender nuestros productos con un mínimo de compra súper accesible y sumate a una marca líder que acompaña a miles de clientes en el cuidado capilar.
+            Empezá a revender nuestros productos con un mínimo de compra súper accesible y accedé a nuestras listas comerciales según tu actividad, previa aprobación por SOFF.
           </p>
 
           <a 
@@ -51,6 +51,9 @@ export default function MayoristasPage() {
             Contactanos al WhatsApp
           </a>
 
+          <Link href="/cuenta/comercial" className="inline-flex mt-4 items-center gap-2 rounded-full border border-[#6d5b51] px-6 py-3 text-[#6d5b51] font-semibold hover:bg-[#dcd0c2]">
+            Solicitar cuenta mayorista, revendedor o peluquero <ArrowRight size={18}/>
+          </Link>
           <p className="mt-8 text-sm text-[#6d5b51] opacity-75">
             Una vez que nos contactes, nuestro equipo evaluará tu perfil y activará tu cuenta mayorista en la plataforma.
           </p>

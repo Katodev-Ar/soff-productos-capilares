@@ -4,8 +4,10 @@
  * Este módulo NO reserva stock: el descuento transaccional queda en P004.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getRolePrice, getAvailableStock, normalizeRole, PRODUCT_SELECT, FREE_SHIPPING_THRESHOLD, type Product } from '@/lib/catalog'
+import { getRolePrice, getAvailableStock, normalizeRole, PRODUCT_SELECT, type Product } from '@/lib/catalog'
 import { estimateShippingCost, SHIPPING_RATES, type DeliveryMethod } from '@/lib/shipping'
+import { couponAllowedFor, volumeDiscountFor, channelOf, minimumRemaining, hasFreeShipping } from '@/lib/commercialPricingPolicy'
+import { loadCommercialTerms, CommercialTermsUnavailable } from '@/lib/serverCommercialTerms'
 
 export class CheckoutValidationError extends Error {
   constructor(message: string, public readonly status = 400) { super(message) }
@@ -66,6 +68,9 @@ export async function calculateQuote(
     .from('profiles').select('role').eq('id', userId).single()
   if (profileError || !profile) throw new CheckoutValidationError('No se pudo verificar el perfil del comprador.', 403)
   const role = normalizeRole(profile.role)
+  let terms
+  try {terms = await loadCommercialTerms(supabase,channelOf(role))}
+  catch (e) {throw new CheckoutValidationError(e instanceof CommercialTermsUnavailable ? e.message : 'Condiciones comerciales no disponibles.',503)}
 
   const { data: productRows, error: productError } = await supabase
     .from('products').select(PRODUCT_SELECT).in('id', items.map(i => i.id)).returns<Product[]>()
@@ -88,11 +93,17 @@ export async function calculateQuote(
     return { ...item, price, title: product.name }
   })
   subtotal = Math.round(subtotal * 100) / 100
-  const volumeDiscount = subtotal >= 70000 ? 10 : subtotal >= 45000 ? 5 : 0
+  if (minimumRemaining(subtotal,terms) > 0) {
+    throw new CheckoutValidationError(`Compra mínima para ${terms.channel}: $${terms.minimumOrder.toLocaleString('es-AR')}.`,409)
+  }
+  const volumeDiscount = volumeDiscountFor(subtotal, role, terms)
 
   let coupon: ValidatedCoupon | null = null
   let couponDiscount = 0
   if (input.couponCode != null && input.couponCode !== '') {
+    if (!couponAllowedFor(role,terms)) {
+      throw new CheckoutValidationError('Los cupones minoristas no se acumulan con precios comerciales.', 409)
+    }
     if (typeof input.couponCode !== 'string' || !/^[A-Z0-9_-]{1,40}$/.test(input.couponCode)) {
       throw new CheckoutValidationError('Cupón inválido.')
     }
@@ -114,14 +125,7 @@ export async function calculateQuote(
   const discounted = Math.round(subtotal * (1 - discountPercentage / 100) * 100) / 100
   let shipping = 0
   if (method === 'delivery') {
-    const { data: setting, error: settingError } = await supabase.from('store_settings')
-      .select('value').eq('key', 'free_shipping_threshold').maybeSingle()
-    // Si falla esta consulta no fingir un descuento de envío gratuito.
-    if (settingError) throw new CheckoutValidationError('No se pudo calcular el envío.', 503)
-    const configuredThreshold = Number(setting?.value)
-    const threshold = setting?.value && Number.isFinite(configuredThreshold) && configuredThreshold > 0
-      ? configuredThreshold : FREE_SHIPPING_THRESHOLD
-    const isFree = discounted >= threshold
+    const isFree = hasFreeShipping(discounted,terms)
     shipping = isFree ? 0 : input.coordinates
       ? estimateShippingCost(input.coordinates.lat, input.coordinates.lng).totalShipping
       : SHIPPING_RATES.DEFAULT_FLAT_RATE

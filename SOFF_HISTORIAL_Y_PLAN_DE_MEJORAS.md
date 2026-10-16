@@ -205,3 +205,6 @@ Consultar `LEER_P013_CORRECCION_TYPESCRIPT.md`.
 ## P014 — Inicio seguro sin Supabase durante la compilación (1.0.14)
 
 El informe real de Windows confirmó compilación de código y tipos en 1.0.13, pero la generación estática se interrumpía porque la URL de Supabase aún no está configurada. Se incorpora validación de la configuración pública, cliente deshabilitado sin conexión a red cuando faltan datos y página de mantenimiento para impedir operaciones aparentes. Con credenciales reales, el comportamiento de la tienda vuelve al modo normal tras **recompilar y desplegar**. Pendiente: ejecutar `npm run build` en Windows y comprobar el resultado; sin SQL nuevo y sin habilitación comercial. Ver `LEER_P014_COMPILACION_SIN_SUPABASE.md`.
+
+### P016 (v1.0.16) — Carrito verificado y descuentos por perfil
+El carrito sincroniza precios vigentes de Supabase mediante endpoint autenticado; se bloquea checkout si no puede verificar. El cálculo final servidor conserva autoridad. Promociones minoristas 5%/10% vigentes; precios comerciales diferenciados sin descuentos automáticos ni cupones minoristas acumulables hasta resolución del titular. No hay migración SQL nueva. Leer `LEER_P016_CARRITO_Y_DESCUENTOS.md`.
