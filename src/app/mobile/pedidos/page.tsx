@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import ReceiptLink from '@/components/ReceiptLink'
+import { postAsSoffAdmin } from '@/lib/adminFetch'
 import { ShoppingBag, CheckCircle, Clock, XCircle, RefreshCw, FileImage, ChevronDown, AlertTriangle } from 'lucide-react'
 
-type OrderStatus = 'all' | 'pending' | 'completed' | 'cancelled'
+type OrderStatus = 'all' | 'pendiente' | 'entregado' | 'cancelado'
 
 export default function MobilePedidosPage() {
   const router = useRouter()
@@ -47,31 +49,28 @@ export default function MobilePedidosPage() {
   }
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: newStatus })
-      .eq('id', orderId)
-
-    if (error) {
-      alert('Error al actualizar: ' + error.message)
-      return
-    }
-
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
+    try {
+      await postAsSoffAdmin('/api/admin/orders/status',{orderId,newStatus,bankChecked:true,
+        reason:newStatus==='cancelado'?'Cancelación desde panel móvil tras revisar el banco':'Cambio desde panel móvil'})
+      setOrders(current=>current.map(o=>o.id===orderId?{...o,status:newStatus}:o))
+    } catch(e){alert(e instanceof Error?e.message:'Error al actualizar')}
   }
 
   const statusConfig: Record<string, { label: string, color: string, bgColor: string, icon: typeof Clock }> = {
-    pending: { label: 'Pendiente', color: 'text-yellow-700', bgColor: 'bg-yellow-100', icon: Clock },
-    completed: { label: 'Completado', color: 'text-green-700', bgColor: 'bg-green-100', icon: CheckCircle },
-    cancelled: { label: 'Cancelado', color: 'text-red-700', bgColor: 'bg-red-100', icon: XCircle },
+    pendiente: { label: 'Pendiente', color: 'text-yellow-700', bgColor: 'bg-yellow-100', icon: Clock },
+    pagado: { label: 'Pagado', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: CheckCircle },
+    en_preparacion: { label: 'En preparación', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: Clock },
+    enviado: { label: 'Enviado', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: CheckCircle },
+    entregado: { label: 'Entregado', color: 'text-green-700', bgColor: 'bg-green-100', icon: CheckCircle },
+    cancelado: { label: 'Cancelado', color: 'text-red-700', bgColor: 'bg-red-100', icon: XCircle },
   }
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
   const counts = {
     all: orders.length,
-    pending: orders.filter(o => o.status === 'pending').length,
-    completed: orders.filter(o => o.status === 'completed').length,
-    cancelled: orders.filter(o => o.status === 'cancelled').length,
+    pendiente: orders.filter(o => o.status === 'pendiente').length,
+    entregado: orders.filter(o => o.status === 'entregado').length,
+    cancelado: orders.filter(o => o.status === 'cancelado').length,
   }
 
   if (loading) {
@@ -106,9 +105,9 @@ export default function MobilePedidosPage() {
           {(
             [
               { key: 'all' as const, label: 'Todos' },
-              { key: 'pending' as const, label: '🟡 Pendientes' },
-              { key: 'completed' as const, label: '🟢 Completados' },
-              { key: 'cancelled' as const, label: '🔴 Cancelados' },
+              { key: 'pendiente' as const, label: '🟡 Pendientes' },
+              { key: 'entregado' as const, label: '🟢 Completados' },
+              { key: 'cancelado' as const, label: '🔴 Cancelados' },
             ] as const
           ).map(f => (
             <button
@@ -134,7 +133,7 @@ export default function MobilePedidosPage() {
           </div>
         ) : (
           filtered.map(order => {
-            const config = statusConfig[order.status] || statusConfig.pending
+            const config = statusConfig[order.status] || statusConfig.pendiente
             const StatusIcon = config.icon
             const isExpanded = expandedId === order.id
             const isTransfer = order.mp_payment_id?.includes('receipts')
@@ -196,15 +195,13 @@ export default function MobilePedidosPage() {
                     {/* Transfer Receipt */}
                     {isTransfer && (
                       <div className="space-y-2">
-                        <a
-                          href={order.mp_payment_id}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <ReceiptLink
+                          orderId={order.id}
                           className="flex items-center gap-2 bg-blue-50 text-blue-600 rounded-xl p-3 text-sm font-medium active:bg-blue-100"
                         >
                           <FileImage className="h-5 w-5" />
                           Ver comprobante de transferencia
-                        </a>
+                        </ReceiptLink>
                         {order.receipt_warning && (
                           <div className="bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-3 text-xs font-semibold flex items-start gap-2">
                             <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-none" />
@@ -217,33 +214,27 @@ export default function MobilePedidosPage() {
                       </div>
                     )}
 
-                    {/* Change Status */}
+                    {/* Change Status: respetar las transiciones válidas */}
                     <div>
                       <p className="text-xs text-gray-500 font-medium mb-2">Cambiar estado</p>
                       <div className="flex gap-2">
-                        {order.status !== 'pending' && (
-                          <button
-                            onClick={() => updateOrderStatus(order.id, 'pending')}
-                            className="flex-1 bg-yellow-100 text-yellow-700 font-medium rounded-xl py-2.5 text-xs flex items-center justify-center gap-1 active:bg-yellow-200"
-                          >
-                            <Clock className="h-3.5 w-3.5" /> Pendiente
-                          </button>
+                        {order.status === 'pendiente' && (
+                          <p className="text-xs text-amber-700">Conciliá el pago desde Administración → Pedidos. El comprobante no acredita fondos.</p>
                         )}
-                        {order.status !== 'completed' && (
-                          <button
-                            onClick={() => updateOrderStatus(order.id, 'completed')}
-                            className="flex-1 bg-green-100 text-green-700 font-medium rounded-xl py-2.5 text-xs flex items-center justify-center gap-1 active:bg-green-200"
-                          >
-                            <CheckCircle className="h-3.5 w-3.5" /> Completado
-                          </button>
+                        {order.status === 'pagado' && (
+                          <button onClick={() => updateOrderStatus(order.id, 'en_preparacion')} className="flex-1 bg-blue-100 text-blue-700 font-medium rounded-xl py-2.5 text-xs">En preparación</button>
                         )}
-                        {order.status !== 'cancelled' && (
+                        {order.status === 'en_preparacion' && (
+                          <button onClick={() => updateOrderStatus(order.id, 'enviado')} className="flex-1 bg-blue-100 text-blue-700 font-medium rounded-xl py-2.5 text-xs">Marcar enviado</button>
+                        )}
+                        {order.status === 'enviado' && (
+                          <button onClick={() => updateOrderStatus(order.id, 'entregado')} className="flex-1 bg-green-100 text-green-700 font-medium rounded-xl py-2.5 text-xs">Entregado</button>
+                        )}
+                        {order.status === 'pendiente' && (
                           <button
-                            onClick={() => updateOrderStatus(order.id, 'cancelled')}
-                            className="flex-1 bg-red-100 text-red-700 font-medium rounded-xl py-2.5 text-xs flex items-center justify-center gap-1 active:bg-red-200"
-                          >
-                            <XCircle className="h-3.5 w-3.5" /> Cancelar
-                          </button>
+                            onClick={() => { if (window.confirm('¿Verificaste el banco y confirmás que NO se acreditó el pago? Se liberará el stock.')) updateOrderStatus(order.id, 'cancelado') }}
+                            className="flex-1 bg-red-100 text-red-700 font-medium rounded-xl py-2.5 text-xs flex items-center justify-center gap-1"
+                          ><XCircle className="h-3.5 w-3.5" /> Cancelar</button>
                         )}
                       </div>
                     </div>

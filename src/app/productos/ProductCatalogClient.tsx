@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react'
+import { matchesCatalogQuery } from '@/lib/catalogSearch'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
@@ -37,6 +38,7 @@ export default function ProductCatalogClient({ initialCategory, initialQuery, in
   const [selectedCategory, setSelectedCategory] = useState(initialCategory.trim())
   const [query, setQuery] = useState(initialQuery.trim())
   const [sortBy, setSortBy] = useState(normalizeSort(initialSort))
+  const [onlyAvailable, setOnlyAvailable] = useState(false)
   const [page, setPage] = useState(1)
   const router = useRouter()
   const observerTarget = useRef<HTMLDivElement>(null)
@@ -58,7 +60,7 @@ export default function ProductCatalogClient({ initialCategory, initialQuery, in
       }
 
       const { data, error } = await supabase
-        .from('products')
+        .from('soff_catalog_public')
         .select(PRODUCT_SELECT)
         .order('category', { ascending: true })
         .order('name', { ascending: true })
@@ -93,20 +95,14 @@ export default function ProductCatalogClient({ initialCategory, initialQuery, in
   }, [products])
 
   const filteredProducts = useMemo(() => {
-    const searchTerm = normalizeText(query)
-
     return products.filter((product) => {
       const category = product.category?.trim() || 'SIN CATEGORIA'
       const matchesCategory = !selectedCategory || category === selectedCategory
 
-      if (!matchesCategory) return false
-      if (!searchTerm) return true
-
-      return [product.name, product.category, product.internal_code, product.barcode].some((value) =>
-        normalizeText(value).includes(searchTerm)
-      )
+      if (!matchesCategory || !matchesCatalogQuery(product, query)) return false
+      return !onlyAvailable || (getAvailableStock(product) > 0 && getRolePrice(product, userRole) > 0)
     })
-  }, [products, query, selectedCategory])
+  }, [products, query, selectedCategory, onlyAvailable, userRole])
 
   const sortedProducts = useMemo(() => {
     const copy = [...filteredProducts]
@@ -180,6 +176,7 @@ export default function ProductCatalogClient({ initialCategory, initialQuery, in
   }
 
   const clearFilters = () => {
+    setOnlyAvailable(false)
     setSelectedCategory('')
     setQuery('')
     setPage(1)
@@ -207,6 +204,7 @@ export default function ProductCatalogClient({ initialCategory, initialQuery, in
               <form onSubmit={handleSearch} className="flex overflow-hidden rounded-full border border-gray-200 bg-[#f8f8f8]">
                 <input
                   type="search"
+                  aria-label="Buscar productos por nombre, código o categoría"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Buscar por nombre, código o barra"
@@ -218,6 +216,10 @@ export default function ProductCatalogClient({ initialCategory, initialQuery, in
               </form>
 
               <div className="flex items-center gap-2">
+                <label className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-gray-700">
+                  <input type="checkbox" checked={onlyAvailable} onChange={event => { setOnlyAvailable(event.target.checked); setPage(1) }} className="h-4 w-4 accent-[#002f5b]" />
+                  Solo disponibles
+                </label>
                 <select
                   value={sortBy}
                   onChange={(event) => {
@@ -233,7 +235,7 @@ export default function ProductCatalogClient({ initialCategory, initialQuery, in
                   <option value="price_desc">Mayor precio</option>
                   <option value="stock_desc">Mayor stock</option>
                 </select>
-                {(selectedCategory || query) && (
+                {(selectedCategory || query || onlyAvailable) && (
                   <button
                     type="button"
                     onClick={clearFilters}
@@ -291,7 +293,7 @@ export default function ProductCatalogClient({ initialCategory, initialQuery, in
           <section>
             {errorMessage && <div className="mb-6 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">{errorMessage}</div>}
 
-            <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div aria-live="polite" className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-gray-500">
                 {loading
                   ? 'Buscando productos...'
@@ -357,6 +359,7 @@ function CategoryButton({ active, label, count, onClick, full = false }: {
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={`flex flex-none items-center justify-between gap-3 rounded-full px-4 py-2 text-left text-sm font-bold transition-colors ${
         full ? 'w-full' : ''
       } ${active ? 'bg-[#002f5b] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
@@ -365,10 +368,6 @@ function CategoryButton({ active, label, count, onClick, full = false }: {
       <span className={`text-[11px] ${active ? 'text-white/80' : 'text-gray-400'}`}>{count}</span>
     </button>
   )
-}
-
-function normalizeText(value: string | null | undefined): string {
-  return (value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
 }
 
 function sortablePrice(price: number): number {

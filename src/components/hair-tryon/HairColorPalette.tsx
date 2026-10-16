@@ -12,6 +12,8 @@ interface HairColorPaletteProps {
   onChangeIntensity: (val: number) => void
   lightnessLift: number
   onChangeLightnessLift: (val: number) => void
+  gloss: number
+  onChangeGloss: (val: number) => void
   customHex: string
   onChangeCustomHex: (hex: string) => void
 }
@@ -33,6 +35,8 @@ export default function HairColorPalette({
   onChangeIntensity,
   lightnessLift,
   onChangeLightnessLift,
+  gloss,
+  onChangeGloss,
   customHex,
   onChangeCustomHex,
 }: HairColorPaletteProps) {
@@ -84,6 +88,7 @@ export default function HairColorPalette({
             <button
               key={family.id}
               onClick={() => setActiveFamily(family.id)}
+              aria-pressed={isActive}
               className={`px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-all ${
                 isActive
                   ? 'bg-black text-white shadow-sm'
@@ -104,6 +109,8 @@ export default function HairColorPalette({
             <button
               key={shade.id}
               onClick={() => onSelectShade(shade)}
+              aria-pressed={isSelected}
+              aria-label={`Probar color ${shade.name}, tono ${shade.toneCode}`}
               className={`group flex flex-col items-center p-2 rounded-xl transition-all border ${
                 isSelected
                   ? 'border-[#e88baf] bg-pink-50/40 shadow-sm ring-2 ring-[#e88baf]/30'
@@ -145,6 +152,7 @@ export default function HairColorPalette({
             >
               <input
                 type="color"
+                aria-label="Seleccionar un color personalizado"
                 value={customHex}
                 onChange={handleCustomColorChange}
                 className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
@@ -210,6 +218,30 @@ export default function HairColorPalette({
           />
           <span className="text-[10px] text-gray-400 block mt-1">
             Aumentá este control si tu cabello es oscuro y querés visualizar tonos rubios o cobrizos claros.
+          </span>
+        </div>
+
+        <div>
+          <div className="flex justify-between items-center text-xs mb-1.5">
+            <span className="font-semibold text-gray-700 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#e88baf]" />
+              Brillo y Reflejos de Mechas
+            </span>
+            <span className="text-gray-500 font-mono font-medium">
+              {Math.round(gloss * 100)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0.1"
+            max="1"
+            step="0.05"
+            value={gloss}
+            onChange={(e) => onChangeGloss(parseFloat(e.target.value))}
+            className="w-full accent-[#e88baf] cursor-pointer h-1.5 bg-gray-200 rounded-lg"
+          />
+          <span className="text-[10px] text-gray-400 block mt-1">
+            Realza el brillo sedoso donde la luz ambiental impacta sobre cada mechón.
           </span>
         </div>
       </div>

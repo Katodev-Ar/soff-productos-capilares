@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
+import ReceiptLink from '@/components/ReceiptLink'
 import { 
   Eye, 
   PackageSearch, 
@@ -444,14 +445,12 @@ export default function PedidosPage() {
                         {/* Botón si es transferencia para ver comprobante o contactar */}
                         {isTransfer && order.mp_payment_id && (
                           <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                            <a 
-                              href={order.mp_payment_id} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
+                            <ReceiptLink
+                              orderId={order.id}
                               className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-semibold bg-blue-50 px-3 py-1.5 rounded-lg"
                             >
                               <FileText className="w-3.5 h-3.5" /> Ver comprobante adjunto
-                            </a>
+                            </ReceiptLink>
                             <a
                               href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(`¡Hola Sofia! Te consulto por mi orden #${order.id.slice(0, 4).toUpperCase()} de $${order.total?.toLocaleString('es-AR')}.`)}`}
                               target="_blank"
@@ -574,14 +573,12 @@ export default function PedidosPage() {
                   </div>
                   
                   <div className="flex items-center gap-4">
-                    <a
-                      href={selectedOrder.mp_payment_id}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <ReceiptLink
+                      orderId={selectedOrder.id}
                       className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all"
                     >
                       <ExternalLink className="w-3.5 h-3.5" /> Abrir Comprobante Original
-                    </a>
+                    </ReceiptLink>
                   </div>
                 </div>
               )}

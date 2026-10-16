@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import { Mail, Lock, User, Phone, CreditCard, MapPin, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -18,7 +17,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState(1) // Step 1: credentials, Step 2: personal data
-  const router = useRouter()
+  const [registered, setRegistered] = useState(false)
 
   const addAddress = () => {
     setAddresses([...addresses, { label: '', address: '', city: '', cp: '' }])
@@ -66,51 +65,33 @@ export default function RegisterPage() {
       return
     }
 
-    // 1. Create auth user
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    })
-
-    if (signUpError) {
-      setError(signUpError.message)
+    // Los datos se envían al trigger de auth.users en la creación de la cuenta.
+    // No hacer INSERT de profiles desde el cliente (RLS y correo sin confirmar).
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            phone: phone.trim(),
+            dni: dni.trim(),
+            addresses: addresses.filter(a => a.address.trim() !== '').map(a => ({
+              label: a.label.trim(), address: a.address.trim(), city: a.city.trim(), cp: a.cp.trim(),
+            })),
+          },
+        },
+      })
+      if (signUpError) throw signUpError
+      if (!data.user) throw new Error('No se pudo crear la cuenta. Intentá nuevamente.')
+      // El correo puede requerir confirmación: no afirmar que ya inició sesión.
+      setRegistered(true)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo completar el registro.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    // 2. Update profile with personal data
-    if (signUpData.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: firstName,
-          last_name: lastName,
-          phone: phone,
-          dni: dni,
-          addresses: addresses.filter(a => a.address.trim() !== ''),
-        })
-        .eq('id', signUpData.user.id)
-
-      if (profileError) {
-        console.error('Profile update error:', profileError)
-        // Try insert if update fails (profile might not exist yet)
-        await supabase
-          .from('profiles')
-          .insert({
-            id: signUpData.user.id,
-            first_name: firstName,
-            last_name: lastName,
-            phone: phone,
-            dni: dni,
-            addresses: addresses.filter(a => a.address.trim() !== ''),
-            role: 'retail',
-          })
-      }
-    }
-
-    router.push('/')
-    router.refresh()
-    setLoading(false)
   }
 
   const inputClass = "block w-full pl-10 sm:text-sm border-gray-300 rounded-lg py-2.5 border focus:ring-black focus:border-black outline-none"
@@ -134,7 +115,13 @@ export default function RegisterPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-sm rounded-2xl sm:px-10 border border-gray-100">
 
-          {step === 1 ? (
+          {registered ? (
+            <div role="status" className="space-y-4 text-center">
+              <h3 className="text-xl font-semibold">Registro recibido</h3>
+              <p className="text-sm text-gray-600">Si corresponde, confirmá tu correo electrónico antes de iniciar sesión. Los datos de tu perfil se guardan al crear la cuenta.</p>
+              <Link href="/login" className="inline-block rounded-full bg-black px-5 py-3 text-sm font-bold text-white">Ir a iniciar sesión</Link>
+            </div>
+          ) : step === 1 ? (
             <form className="space-y-5" onSubmit={handleStep1}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>

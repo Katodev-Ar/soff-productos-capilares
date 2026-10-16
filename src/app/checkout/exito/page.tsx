@@ -19,9 +19,9 @@ export default function CheckoutExitoPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-3">¡Pago aprobado!</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-3">¡Pedido recibido!</h1>
         <p className="text-gray-500 mb-8">
-          Tu pedido fue procesado con éxito. Te enviaremos un email con los detalles de tu compra y el seguimiento del envío.
+          Registramos tu pedido. El comprobante será revisado y el pago confirmado antes de preparar o enviar los productos.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/pedidos" className="bg-black text-white px-8 py-3 rounded-full font-medium hover:bg-gray-800 transition-colors">

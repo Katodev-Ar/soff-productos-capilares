@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useCart } from '@/context/CartContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -106,6 +106,8 @@ export default function CheckoutPage() {
 
   const finalTotal = cartTotal + shippingCost
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  // P004: reintentos del mismo checkout no duplican la reserva de stock.
+  const checkoutRequestKey = useRef<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isValidatingReceipt, setIsValidatingReceipt] = useState(false)
   const [ocrProgress, setOcrProgress] = useState<number | null>(null)
@@ -136,9 +138,9 @@ export default function CheckoutPage() {
       setReceiptPreviewUrl(null)
     }
 
-    // Chequeo rápido de tamaño en el cliente (máximo 15 MB)
-    if (file.size > 15 * 1024 * 1024) {
-      const msg = 'El archivo es demasiado pesado (máximo 15 MB). Por favor sube una captura o comprobante más liviano.'
+    // Misma limitación que Supabase y el servidor (máximo 5 MB).
+    if (file.size > 5 * 1024 * 1024) {
+      const msg = 'El archivo es demasiado pesado (máximo 5 MB). Por favor sube una captura o comprobante más liviano.'
       setReceiptValidation({
         isValid: false,
         allowSubmit: false,
@@ -340,29 +342,27 @@ export default function CheckoutPage() {
     setCouponLoading(true)
     setCouponError('')
     
-    const { data: coupon, error } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('code', couponInput.toUpperCase())
-      .eq('is_active', true)
-      .single()
-      
-    if (error || !coupon) {
-      setCouponError('Cupón inválido o inactivo')
+    try {
+      const {data:{session}} = await supabase.auth.getSession()
+      if(!session?.access_token) throw new Error('Necesitás iniciar sesión para usar cupones.')
+      const res=await fetch('/api/checkout/coupon',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},
+        body:JSON.stringify({code:couponInput.trim().toUpperCase()}),
+        cache:'no-store',
+      })
+      const result=await res.json()
+      if(!res.ok || !result?.code || !Number.isFinite(Number(result.discountPercentage))) {
+        throw new Error(result?.error || 'Cupón inválido o agotado.')
+      }
+      setCouponCode(result.code)
+      setCouponDiscountPercentage(Number(result.discountPercentage))
+      setCouponInput('')
+    } catch(cause) {
+      setCouponError(cause instanceof Error ? cause.message : 'No se pudo validar el cupón.')
+    } finally {
       setCouponLoading(false)
-      return
     }
-    
-    if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
-      setCouponError('El cupón ha alcanzado su límite de usos')
-      setCouponLoading(false)
-      return
-    }
-    
-    setCouponCode(coupon.code)
-    setCouponDiscountPercentage(coupon.discount_percentage)
-    setCouponInput('')
-    setCouponLoading(false)
   }
 
   const removeCoupon = () => {
@@ -383,8 +383,9 @@ export default function CheckoutPage() {
       }
 
       const body = new FormData()
+      if (!checkoutRequestKey.current) checkoutRequestKey.current = crypto.randomUUID()
+      body.append('requestKey', checkoutRequestKey.current)
       body.append('receipt', receiptFile)
-      body.append('userId', userData.user.id)
       body.append('total', String(Math.round(finalTotal)))
       
       let fullAddress = ''
@@ -411,7 +412,13 @@ export default function CheckoutPage() {
       }
       
       body.append('shippingAddress', fullAddress)
-      body.append('items', JSON.stringify(items))
+      body.append('items', JSON.stringify(items.map(({ id, quantity }) => ({ id, quantity }))))
+      body.append('deliveryMethod', deliveryMethod)
+      if (mapCoordinates && deliveryMethod === 'delivery') {
+        body.append('mapLat', String(mapCoordinates.lat))
+        body.append('mapLng', String(mapCoordinates.lng))
+      }
+      if (couponCode) body.append('couponCode', couponCode)
       if (receiptValidation?.referenceNumber && receiptValidation.referenceNumber !== 'Detectado' && receiptValidation.referenceNumber !== 'OK') {
         body.append('transferReference', receiptValidation.referenceNumber)
       }
@@ -419,21 +426,19 @@ export default function CheckoutPage() {
         body.append('receiptWarning', receiptValidation.warningMessage)
       }
 
-      const res = await fetch('/api/checkout/transfer', { method: 'POST', body })
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Tu sesión venció. Iniciá sesión nuevamente.')
+      const res = await fetch('/api/checkout/transfer', {
+        method: 'POST',
+        body,
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       const data = await res.json()
 
       if (!res.ok) {
         throw new Error(data.error || 'Error al procesar')
       }
       
-      // Update coupon uses if applied
-      if (couponCode) {
-        const { data: couponData } = await supabase.from('coupons').select('current_uses').eq('code', couponCode).single()
-        if (couponData) {
-          await supabase.from('coupons').update({ current_uses: couponData.current_uses + 1 }).eq('code', couponCode)
-        }
-      }
-
       // Vincular dirección a la cuenta para futuros pedidos
       if (formData.address) {
         const addressObj = {
@@ -454,7 +459,7 @@ export default function CheckoutPage() {
       router.push('/checkout/exito')
     } catch (error: any) {
       console.error('Error al subir comprobante:', error)
-      setPaymentNotice('Hubo un error al procesar el comprobante. Por favor intentá enviarlo por WhatsApp.')
+      setPaymentNotice(error instanceof Error ? error.message : 'No se pudo procesar el pedido.')
     } finally {
       setIsProcessing(false)
     }

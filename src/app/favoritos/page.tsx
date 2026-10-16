@@ -49,7 +49,7 @@ export default function FavoritosPage() {
 
         const ids = favorites.map(f => f.productId)
         const { data, error } = await supabase
-          .from('products')
+          .from('soff_catalog_public')
           .select('*')
           .in('id', ids)
 

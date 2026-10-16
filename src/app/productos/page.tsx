@@ -1,4 +1,11 @@
+import type { Metadata } from 'next'
 import ProductCatalogClient from './ProductCatalogClient'
+
+export const metadata: Metadata = {
+  title: 'Catálogo de productos capilares | SOFF',
+  description: 'Explorá productos capilares por categoría, código y nombre. Consultá precios y disponibilidad vigentes al realizar tu pedido.',
+}
+
 
 type ProductsPageProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>

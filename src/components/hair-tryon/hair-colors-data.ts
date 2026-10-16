@@ -10,14 +10,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#141416',
     description: 'Tono negro azabache de máxima cobertura y brillo espejo.',
     lightnessAdjustment: 0.0,
-    matchedProduct: {
-      id: '24162131-19a4-444d-b952-40141c64af69',
-      name: 'TINTURA COLORMASTER 1 NEGRO',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_colormaster_1_negro_250.webp',
-      shadeCode: '1.0',
-    },
+    matchedProduct: { id: '24162131-19a4-444d-b952-40141c64af69' },
   },
   {
     id: '4-castano',
@@ -27,14 +20,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#3a2318',
     description: 'Castaño clásico equilibrado con reflejos cálidos naturales.',
     lightnessAdjustment: 0.1,
-    matchedProduct: {
-      id: '823ca6d5-ec83-48ae-8016-580ea44cf41c',
-      name: 'TINTURA COLOR MASTER 4 CASTAÑO',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_color_master_4_casta_o_218.webp',
-      shadeCode: '4.0',
-    },
+    matchedProduct: { id: '823ca6d5-ec83-48ae-8016-580ea44cf41c' },
   },
   {
     id: '5-castano-claro',
@@ -44,14 +30,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#4e3323',
     description: 'Castaño luminoso de base suave para transición a tonos medios.',
     lightnessAdjustment: 0.2,
-    matchedProduct: {
-      id: 'c5aa324d-7887-4820-89fa-1745b3094c8e',
-      name: 'TINTURA COLOR MASTER 5 CASTAÑO CLARO',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_color_master_5_casta_o_claro_219.webp',
-      shadeCode: '5.0',
-    },
+    matchedProduct: { id: 'c5aa324d-7887-4820-89fa-1745b3094c8e' },
   },
 
   // CHOCOLATES
@@ -63,14 +42,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#462719',
     description: 'Marrón profundo con reflejos cálidos chocolate y brillo intenso.',
     lightnessAdjustment: 0.2,
-    matchedProduct: {
-      id: '3514954f-566d-42fb-8cd5-21cae3775512',
-      name: 'TINTURA COLORMASTER 0.631 INTENSIFICADOR CHOCOLATE',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_colormaster_0_631_intensificador_chocolate_247.webp',
-      shadeCode: '0.631',
-    },
+    matchedProduct: { id: '3514954f-566d-42fb-8cd5-21cae3775512' },
   },
   {
     id: 'chocolate-marron-cobrizo',
@@ -80,14 +52,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#5d3823',
     description: 'Castaño marrón con sutiles destellos avellana y canela.',
     lightnessAdjustment: 0.25,
-    matchedProduct: {
-      id: 'dbd227f8-c9ec-4480-ac99-1003842f0988',
-      name: 'TINTURA LUXURY 5.74 CASTAÑO CLARO MARRON COBRIZO',
-      brand: 'Iyosei',
-      price: 3800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_luxury_5_74_casta_o_claro_marron_cobrizo_6_337.webp',
-      shadeCode: '5.74',
-    },
+    matchedProduct: { id: 'dbd227f8-c9ec-4480-ac99-1003842f0988' },
   },
 
   // RUBIOS
@@ -99,14 +64,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#8d6d45',
     description: 'Rubio miel clásico para una luminosidad veraniega radiante.',
     lightnessAdjustment: 0.45,
-    matchedProduct: {
-      id: '417df4e8-30f3-4f90-855f-20e498c13cc7',
-      name: 'TINTURA COLOR MASTER 7 RUBIO',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_color_master_7_rubio_227.webp',
-      shadeCode: '7.0',
-    },
+    matchedProduct: { id: '417df4e8-30f3-4f90-855f-20e498c13cc7' },
   },
   {
     id: '8-1-rubio-ceniza',
@@ -116,14 +74,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#9e8568',
     description: 'Rubio frío neutro que neutraliza reflejos anaranjados.',
     lightnessAdjustment: 0.55,
-    matchedProduct: {
-      id: '119f1d43-3089-41b5-bb01-683c2851b5af',
-      name: 'TINTURA COLOR MASTER 8.1 RUBIO CLARO CENIZA',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_color_master_8_1_rubio_claro_ceniza_232.webp',
-      shadeCode: '8.1',
-    },
+    matchedProduct: { id: '119f1d43-3089-41b5-bb01-683c2851b5af' },
   },
   {
     id: '9-rubio-muy-claro',
@@ -133,14 +84,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#bda079',
     description: 'Tono rubio dorado ultra claro para máxima iluminación facial.',
     lightnessAdjustment: 0.65,
-    matchedProduct: {
-      id: '69bfd581-29b7-45b7-8888-85803dc1c46b',
-      name: 'TINTURA COLOR MASTER 9 RUBIO MUY CLARO',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_color_master_9_rubio_muy_claro_235.webp',
-      shadeCode: '9.0',
-    },
+    matchedProduct: { id: '69bfd581-29b7-45b7-8888-85803dc1c46b' },
   },
   {
     id: 'gris-claro-plata',
@@ -150,14 +94,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#a8a8a8',
     description: 'Platinado ceniza futurista y elegante para cabellos decolorados.',
     lightnessAdjustment: 0.6,
-    matchedProduct: {
-      id: 'd2d4921d-6a06-49dd-b091-978f0b7b7d7e',
-      name: 'TINTURA COLOR MASTER GRIS CLARO',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_color_master_gris_claro_239.webp',
-      shadeCode: 'Gris',
-    },
+    matchedProduct: { id: 'd2d4921d-6a06-49dd-b091-978f0b7b7d7e' },
   },
 
   // COBRIZOS
@@ -169,14 +106,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#a34e2c',
     description: 'Cobrizo elegante y luminoso que realza la calidez del rostro.',
     lightnessAdjustment: 0.4,
-    matchedProduct: {
-      id: '864587f6-3a7c-42bf-9228-750fe8b28126',
-      name: 'TINTURA COLORMASTER 7.4 RUBIO COBRIZO',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_colormaster_7_4_rubio_cobrizo_295.webp',
-      shadeCode: '7.4',
-    },
+    matchedProduct: { id: '864587f6-3a7c-42bf-9228-750fe8b28126' },
   },
   {
     id: '7-44-cobre-intenso',
@@ -186,14 +116,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#c04a1f',
     description: 'Fuego cobrizo vibrante de alta pigmentación y personalidad.',
     lightnessAdjustment: 0.45,
-    matchedProduct: {
-      id: 'fd4c9cf6-f017-48b3-93af-015606042f6a',
-      name: 'TINTURA LUXURY 7.44 RUBIO COBRE INTENSO',
-      brand: 'Iyosei',
-      price: 3800,
-      image_url: null,
-      shadeCode: '7.44',
-    },
+    matchedProduct: { id: 'fd4c9cf6-f017-48b3-93af-015606042f6a' },
   },
 
   // ROJOS
@@ -205,14 +128,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#8d1727',
     description: 'Rojo escarlata intenso con reflejos multidimensionales.',
     lightnessAdjustment: 0.35,
-    matchedProduct: {
-      id: 'aa82f83a-0d7e-45b1-87d9-ec7feaeb267c',
-      name: 'TINTURA COLORMASTER 7.66 RUBIO ROJIZO+ROJO',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_colormaster_7_66_rubio_rojizo_rojo_299.webp',
-      shadeCode: '7.66',
-    },
+    matchedProduct: { id: 'aa82f83a-0d7e-45b1-87d9-ec7feaeb267c' },
   },
   {
     id: 'borgona-marsala',
@@ -222,14 +138,7 @@ export const HAIR_COLOR_SHADES: HairColorShade[] = [
     hex: '#5c1024',
     description: 'Vino tinto oscuro sofisticado con reflejos ciruela.',
     lightnessAdjustment: 0.25,
-    matchedProduct: {
-      id: 'be0d6402-9bc9-4dd5-86ce-06d4ea993834',
-      name: 'TINTURA COLORMASTER 6.66 RUBIO OSCURO ROJIZO+ROJO',
-      brand: 'Fidelité',
-      price: 2800,
-      image_url: 'https://ubghnuqehmydbkluwimt.supabase.co/storage/v1/object/public/products/tintura_colormaster_6_66_rubio_oscuro_rojizo_rojo_285.webp',
-      shadeCode: '6.66',
-    },
+    matchedProduct: { id: 'be0d6402-9bc9-4dd5-86ce-06d4ea993834' },
   },
 
   // FANTASÍA

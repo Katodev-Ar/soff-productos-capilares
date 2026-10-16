@@ -1,125 +1,122 @@
 'use client'
 
-import React, { useState } from 'react'
-import Image from 'next/image'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ShoppingBag, Check, Sparkles, ArrowRight, Package } from 'lucide-react'
-import { HairColorShade } from './types'
-import { formatPrice } from '@/lib/catalog'
+import { Check, ArrowRight, Package, ShoppingBag, Loader2, AlertCircle } from 'lucide-react'
+import type { HairColorShade } from './types'
+import { supabase } from '@/lib/supabase/client'
+import { PRODUCT_SELECT, formatPrice, getAvailableStock, getRolePrice, normalizeRole, type Product, type UserRole } from '@/lib/catalog'
 import { useCart } from '@/context/CartContext'
 
-interface HairProductCardProps {
-  shade: HairColorShade
+type Result = {
+  productId: string
+  status: 'ready' | 'unavailable' | 'error'
+  product: Product | null
+  role: UserRole
 }
 
-export default function HairProductCard({ shade }: HairProductCardProps) {
+export default function HairProductCard({ shade }: { shade: HairColorShade }) {
   const { addToCart, setIsCartOpen } = useCart()
+  const [result, setResult] = useState<Result | null>(null)
   const [added, setAdded] = useState(false)
+  const productId = shade.matchedProduct?.id
 
-  const product = shade.matchedProduct
+  useEffect(() => {
+    let active = true
+    // Al cambiar de tono se invalida inmediatamente la ficha anterior.
+    const reset = () => { if (active) { setResult(null); setAdded(false) } }
+    reset()
+    if (!productId) return () => { active = false }
 
-  const handleAddToCart = () => {
-    if (!product) return
+    async function loadLiveProduct() {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser()
+        if (authError) throw authError
+        const user = authData.user
+        let role: UserRole = 'minorista'
+        if (user) {
+          const { data: profile, error: roleError } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+          if (roleError) throw roleError
+          role = normalizeRole(profile?.role)
+        }
+        const { data, error } = await supabase.from('soff_catalog_public').select(PRODUCT_SELECT).eq('id', productId!).maybeSingle<Product>()
+        if (error) throw error
+        if (active) setResult({ productId: productId!, status: data ? 'ready' : 'unavailable', product: data ?? null, role })
+      } catch {
+        if (active) setResult({ productId: productId!, status: 'error', product: null, role: 'minorista' })
+      }
+    }
+    void loadLiveProduct()
+    return () => { active = false }
+  }, [productId])
 
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      quantity: 1,
-      image_url: product.image_url,
-      stock: 10,
-    })
+  const current = result?.productId === productId ? result : null
+  const product = current?.status === 'ready' ? current.product : null
+  const stock = product ? getAvailableStock(product) : 0
+  const price = product ? getRolePrice(product, current?.role ?? 'minorista') : 0
+  const canBuy = stock > 0 && price > 0
 
+  function handleAddToCart() {
+    if (!product || !canBuy) return
+    addToCart({ id: product.id, name: product.name, price, quantity: 1, image_url: product.image_url, stock })
     setAdded(true)
-    setTimeout(() => setAdded(false), 2000)
     setIsCartOpen(true)
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-pink-100 shadow-sm overflow-hidden p-5 transition-all hover:shadow-md">
-      <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-        <div className="flex items-center gap-2">
-          <span
-            className="w-4 h-4 rounded-full border border-black/10 shadow-inner"
-            style={{ backgroundColor: shade.hex }}
-          />
-          <h3 className="font-semibold text-gray-900 text-sm">
-            Tono Seleccionado: <span className="text-[#e88baf] font-bold">{shade.name}</span>
-          </h3>
-        </div>
-        <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-pink-50 text-[#e88baf] border border-pink-200">
-          Tono {shade.toneCode}
-        </span>
+    <section className="bg-white rounded-2xl border border-pink-100 shadow-sm p-5" aria-live="polite">
+      <div className="flex items-center gap-2 border-b border-gray-100 pb-3 mb-4">
+        <span className="h-4 w-4 rounded-full border border-black/10" style={{ backgroundColor: shade.hex }} />
+        <h3 className="font-semibold text-gray-900 text-sm">Tono {shade.toneCode}: {shade.name}</h3>
       </div>
-
-      <p className="text-xs text-gray-500 mb-4">{shade.description}</p>
-
-      {product ? (
-        <div className="flex flex-col sm:flex-row gap-4 items-center bg-gray-50/70 rounded-xl p-3.5 border border-gray-100">
-          <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-white border border-gray-200 flex-shrink-0 flex items-center justify-center">
-            {product.image_url ? (
-              <Image
-                src={product.image_url}
-                alt={product.name}
-                fill
-                unoptimized
-                className="object-contain p-1"
-                sizes="64px"
-              />
-            ) : (
-              <Package className="w-8 h-8 text-gray-300" />
-            )}
+      <p className="text-xs text-gray-600 mb-4">{shade.description}</p>
+      {!productId ? (
+        <div className="rounded-lg bg-gray-50 p-4 text-sm text-gray-700">
+          Este color es una simulación. No tiene una tintura específica vinculada al catálogo.
+          <Link href="/productos" className="block mt-2 font-semibold underline">Ver todas las tinturas</Link>
+        </div>
+      ) : !current ? (
+        <p className="flex items-center gap-2 text-sm text-gray-600" role="status"><Loader2 className="w-4 h-4 animate-spin"/> Consultando precio y disponibilidad...</p>
+      ) : current.status !== 'ready' || !product ? (
+        <div className="text-sm text-gray-600 rounded-lg bg-gray-50 p-4" role="status">
+          <AlertCircle className="inline w-4 h-4 mr-1" />
+          {current.status === 'error'
+            ? 'No se pudo consultar el catálogo. Intentá nuevamente más tarde.'
+            : 'Esta tintura no está disponible en el catálogo actual.'}
+          <Link href="/productos" className="block mt-2 underline font-medium">Consultar otras tinturas</Link>
+        </div>
+      ) : (
+        <div className="flex flex-col sm:flex-row items-center gap-3 rounded-xl bg-gray-50 p-3">
+          <ProductPhoto key={product.id} src={product.image_url} name={product.name} />
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <h4 className="text-xs font-medium text-gray-900">{product.name}</h4>
+            <p className="text-sm font-bold mt-1 text-gray-900">{price > 0 ? formatPrice(price) : 'Precio no disponible para tu perfil'}</p>
+            <p className="text-xs mt-1 text-gray-600">{stock > 0 ? `${stock} unidades disponibles` : 'Sin stock'}</p>
           </div>
-
-          <div className="flex-1 min-w-0 text-center sm:text-left">
-            <span className="text-[10px] font-semibold tracking-wider uppercase text-pink-600">
-              {product.brand}
-            </span>
-            <h4 className="text-xs font-medium text-gray-900 line-clamp-2 leading-snug">
-              {product.name}
-            </h4>
-            <div className="text-sm font-bold text-gray-900 mt-1">
-              {formatPrice(product.price)}
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Link
-              href={`/producto/${product.id}`}
-              className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition"
-              title="Ver producto completo"
-            >
-              Ver <ArrowRight className="w-3 h-3 ml-1" />
+          <div className="w-full sm:w-auto flex flex-col gap-2">
+            <Link href={`/producto/${product.id}`} className="inline-flex justify-center items-center rounded-lg bg-white border border-gray-200 px-3 py-2 text-xs font-medium">
+              Ver ficha <ArrowRight className="ml-1 w-3 h-3" />
             </Link>
-
-            <button
-              onClick={handleAddToCart}
-              className={`inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-sm transition ${
-                added
-                  ? 'bg-emerald-600 hover:bg-emerald-700'
-                  : 'bg-black hover:bg-[#e88baf] hover:text-black'
-              }`}
-            >
-              {added ? (
-                <>
-                  <Check className="w-3.5 h-3.5 mr-1" /> ¡Agregado!
-                </>
-              ) : (
-                <>
-                  <ShoppingBag className="w-3.5 h-3.5 mr-1.5" /> Agregar al Carrito
-                </>
-              )}
+            <button type="button" disabled={!canBuy} onClick={handleAddToCart}
+              className="inline-flex justify-center items-center rounded-lg bg-black px-3 py-2 text-xs font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#c1272d]">
+              {added ? <><Check className="mr-1 w-4 h-4" /> Agregado</> : <><ShoppingBag className="mr-1 w-4 h-4" /> Agregar</>}
             </button>
           </div>
         </div>
-      ) : (
-        <div className="bg-pink-50/50 rounded-xl p-3 border border-pink-100 text-center text-xs text-gray-600">
-          <Sparkles className="w-4 h-4 text-[#e88baf] mx-auto mb-1" />
-          <span>
-            Tono de fantasía experimental. Podés consultar a nuestro equipo por WhatsApp para formular este matiz personalizado en tintura semi-permanente.
-          </span>
-        </div>
       )}
+      <p className="mt-3 text-[11px] text-gray-500">Precio y stock consultados al seleccionar el tono. Se verifican nuevamente al confirmar el pedido.</p>
+    </section>
+  )
+}
+
+function ProductPhoto({ src, name }: { src: string | null; name: string }) {
+  const [failed, setFailed] = useState(false)
+  return (
+    <div className="h-16 w-16 shrink-0 flex items-center justify-center overflow-hidden rounded-lg bg-white border border-gray-200">
+      {src && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={name} className="w-full h-full object-contain" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+      ) : <Package className="w-7 h-7 text-gray-400" aria-label="Producto sin imagen disponible" />}
     </div>
   )
 }

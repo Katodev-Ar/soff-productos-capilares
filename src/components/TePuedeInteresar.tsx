@@ -5,17 +5,22 @@ import { supabase } from '@/lib/supabase/client'
 import { useCart } from '@/context/CartContext'
 import Link from 'next/link'
 import { Plus, PackageSearch } from 'lucide-react'
-import { formatPrice } from '@/lib/catalog'
+import { formatPrice, getRolePrice, getAvailableStock, normalizeRole, type UserRole } from '@/lib/catalog'
 
 export function TePuedeInteresar() {
   const [recommended, setRecommended] = useState<any[]>([])
+  const [role, setRole] = useState<UserRole>('minorista')
   const { items, addToCart } = useCart()
   
   useEffect(() => {
     async function fetchRecommended() {
-      // Fetch some random or popular products
+      const {data:{user}} = await supabase.auth.getUser()
+      if(user) {
+        const {data:profile}=await supabase.from('profiles').select('role').eq('id',user.id).maybeSingle()
+        setRole(normalizeRole(profile?.role))
+      }
       const { data } = await supabase
-        .from('products')
+        .from('soff_catalog_public')
         .select('*')
         .limit(10)
         
@@ -43,19 +48,19 @@ export function TePuedeInteresar() {
               ) : (
                 <PackageSearch className="text-gray-300" size={24} />
               )}
-              <button 
+              <button disabled={getAvailableStock(product) <= 0 || getRolePrice(product, role) <= 0}
                 onClick={(e) => {
                   e.preventDefault()
                   addToCart({
                     id: product.id,
                     name: product.name,
-                    price: Number(product.price_minorista),
+                    price: getRolePrice(product, role),
                     quantity: 1,
                     image_url: product.image_url,
-                    stock: product.stock
+                    stock: getAvailableStock(product)
                   })
                 }}
-                className="absolute bottom-2 right-2 bg-white text-black border border-gray-200 w-8 h-8 rounded-full flex items-center justify-center shadow-sm hover:bg-black hover:text-white transition-colors"
+                className="absolute bottom-2 right-2 bg-white text-black border border-gray-200 w-8 h-8 rounded-full flex items-center justify-center shadow-sm hover:bg-black hover:text-white transition-colors disabled:opacity-40"
                 title="Agregar al carrito"
               >
                 <Plus size={16} />
@@ -63,7 +68,7 @@ export function TePuedeInteresar() {
             </div>
             <Link href={`/producto/${product.id}`}>
               <h4 className="text-xs font-medium text-gray-800 line-clamp-2 mb-1 group-hover:text-brand-primary transition-colors">{product.name}</h4>
-              <p className="text-sm font-bold text-black">{formatPrice(Number(product.price_minorista))}</p>
+              <p className="text-sm font-bold text-black">{formatPrice(getRolePrice(product, role))}</p>
             </Link>
           </div>
         ))}

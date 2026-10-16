@@ -54,3 +54,6 @@ AUDITORIA_ARQUITECTURA_SISTEMA.md
 .env*
 
 *.traineddata
+
+*.zip
+staging_export/

@@ -9,6 +9,9 @@ export async function POST(request: NextRequest) {
     const clientExtractedText = formData.get('extractedText') as string | null
 
     const totalNumber = Number(expectedTotal) || 0
+    if (clientExtractedText && clientExtractedText.length > 65000) {
+      return NextResponse.json({ error: 'El texto del comprobante es demasiado largo.' }, { status: 413 })
+    }
 
     // Si el cliente ya extrajo el texto con OCR en el navegador:
     if (clientExtractedText && clientExtractedText.trim().length > 0) {
@@ -23,6 +26,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!file.size || file.size > 5 * 1024 * 1024 ||
+        !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type)) {
+      return NextResponse.json({ error: 'Comprobante inválido (JPG, PNG, WEBP o PDF; máximo 5 MB).' }, { status: 400 })
+    }
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 

@@ -24,13 +24,33 @@ const HairTryOnCanvas = dynamic(
 )
 
 export default function ProbadorColorPage() {
+  const [mounted, setMounted] = React.useState(false)
+
   // Default to 7.44 Cobrizo or 6.7 Chocolate
   const [selectedShade, setSelectedShade] = useState<HairColorShade | null>(
     HAIR_COLOR_SHADES.find((s) => s.id === '7-44-cobre-intenso') || HAIR_COLOR_SHADES[0]
   )
   const [intensity, setIntensity] = useState(0.85)
   const [lightnessLift, setLightnessLift] = useState(0.35)
+  const [gloss, setGloss] = useState(0.7)
   const [customHex, setCustomHex] = useState('#c04a1f')
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex flex-col bg-neutral-50/60">
+        <Header />
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center justify-center text-center">
+          <Loader2 className="w-10 h-10 text-[#e88baf] animate-spin mb-3" />
+          <p className="text-sm font-semibold text-gray-700">Iniciando Probador Virtual...</p>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50/60">
@@ -52,14 +72,14 @@ export default function ProbadorColorPage() {
           </h1>
 
           <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-            Descubrí cómo te queda cada tintura de nuestro catálogo antes de comprarla.
+            Visualizá una aproximación de los tonos disponibles. El resultado es ilustrativo y depende de la base y del tratamiento real.
             Usá tu cámara web, subí tu propia foto o probá con nuestros modelos de muestra.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-1 text-xs text-gray-500">
             <span className="inline-flex items-center gap-1.5 font-medium">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              100% Privado en tu Navegador
+              Procesamiento de la imagen en tu dispositivo
             </span>
             <span className="inline-flex items-center gap-1.5 font-medium">
               <Zap className="w-4 h-4 text-amber-500" />
@@ -80,6 +100,7 @@ export default function ProbadorColorPage() {
               selectedShade={selectedShade}
               intensity={intensity}
               lightnessLift={lightnessLift}
+              gloss={gloss}
             />
 
             {/* Tip card */}
@@ -104,6 +125,8 @@ export default function ProbadorColorPage() {
               onChangeIntensity={setIntensity}
               lightnessLift={lightnessLift}
               onChangeLightnessLift={setLightnessLift}
+              gloss={gloss}
+              onChangeGloss={setGloss}
               customHex={customHex}
               onChangeCustomHex={setCustomHex}
             />
@@ -129,7 +152,7 @@ export default function ProbadorColorPage() {
               </div>
               <h4 className="font-semibold text-gray-900">Visión Artificial en tu Dispositivo</h4>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Utilizamos el modelo especializado MediaPipe Hair Segmenter de Google (~760 KB) que corre directamente en el chip gráfico de tu celular o computadora mediante WebAssembly. Ninguna imagen o video viaja a servidores.
+                Utilizamos el modelo especializado MediaPipe Hair Segmenter de Google (~760 KB) que corre directamente en el chip gráfico de tu celular o computadora mediante WebAssembly. La simulación de cabello se procesa en tu dispositivo; los recursos del modelo pueden descargarse de un proveedor externo.
               </p>
             </div>
 
@@ -139,7 +162,7 @@ export default function ProbadorColorPage() {
               </div>
               <h4 className="font-semibold text-gray-900">Fusión HSL que Conserva Brillos</h4>
               <p className="text-xs text-gray-500 leading-relaxed">
-                A diferencia de un filtro plano que parece una máscara pintada, nuestra tecnología de fusión mantiene el 100% de los reflejos, sombras y volumen de cada mechón de tu pelo real, cambiando únicamente el matiz del pigmento.
+                A diferencia de un filtro plano que parece una máscara pintada, nuestra tecnología de fusión procura mantener los reflejos y sombras de la fotografía. No permite predecir exactamente el resultado de una tintura real.
               </p>
             </div>
 
@@ -149,7 +172,7 @@ export default function ProbadorColorPage() {
               </div>
               <h4 className="font-semibold text-gray-900">Conexión con el Catálogo Real</h4>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Cada tono está vinculado a las líneas profesionales que comercializamos en Soff (Fidelité Color Master, Luxury Iyosei, NOV, etc.). Si te gusta cómo te queda, podés añadir la tintura exacta directo al carrito de compras.
+                Los tonos asociados a un producto consultan el precio y las existencias del catálogo actualizado. Solo podés agregarlo al carrito cuando el producto esté disponible para tu perfil.
               </p>
             </div>
           </div>

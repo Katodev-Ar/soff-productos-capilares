@@ -3,7 +3,9 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { LayoutDashboard, Package, ShoppingBag } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase/client'
 
 const navItems = [
   { href: '/mobile/dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -14,12 +16,33 @@ const navItems = [
 export default function MobileLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isLoginPage = pathname === '/mobile'
+  const router = useRouter()
+  const [adminVerified, setAdminVerified] = useState(false)
+  useEffect(() => {
+    if (isLoginPage) return
+    let active = true
+    async function checkAdmin() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!active) return
+      if (!user) { router.replace('/mobile'); return }
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+      if (!active) return
+      if (data?.role !== 'admin') { router.replace('/mobile'); return }
+      setAdminVerified(true)
+    }
+    checkAdmin()
+    return () => { active = false }
+  }, [isLoginPage, router])
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
   }, [])
+
+  if (!isLoginPage && !adminVerified) {
+    return <div className="min-h-screen flex items-center justify-center">Verificando acceso…</div>
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

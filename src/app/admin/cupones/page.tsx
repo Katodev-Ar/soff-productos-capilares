@@ -1,7 +1,8 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { postAsSoffAdmin } from '@/lib/adminFetch'
 import { Trash2, Edit2, BadgePercent, CheckCircle, XCircle } from 'lucide-react'
 
 type Coupon = {
@@ -56,35 +57,30 @@ export default function AdminCoupons() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!code) return alert('El código es obligatorio')
-
-    const payload = {
-      code: code.toUpperCase().trim(),
-      discount_percentage: discount,
-      max_uses: maxUses === '' ? null : Number(maxUses),
-      is_active: isActive
-    }
-
-    if (editingId) {
-      const { error } = await supabase.from('coupons').update(payload).eq('id', editingId)
-      if (error) alert('Error: ' + error.message)
-    } else {
-      const { error } = await supabase.from('coupons').insert([payload])
-      if (error) {
-        if (error.code === '23505') alert('Ese código ya existe')
-        else alert('Error: ' + error.message)
-      }
-    }
-
-    resetForm()
-    fetchData()
+    const normalized = code.toUpperCase().trim()
+    if (!/^[A-Z0-9_-]{3,40}$/.test(normalized)) return alert('Usá de 3 a 40 letras, números, guion o guion bajo.')
+    if (!Number.isFinite(discount) || discount <= 0 || discount > 80) return alert('El descuento debe ser mayor que 0 y hasta 80%.')
+    if (maxUses !== '' && (!Number.isInteger(maxUses) || Number(maxUses) < 1)) return alert('Límite de usos inválido.')
+    try {
+      await postAsSoffAdmin('/api/admin/coupons', {
+        id: editingId, code: normalized, discountPercentage: discount,
+        maxUses: maxUses === '' ? null : Number(maxUses), isActive
+      })
+      resetForm()
+      await fetchData()
+    } catch (err) { alert(err instanceof Error ? err.message : 'No se pudo guardar el cupón.') }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('¿Eliminar cupón?')) return
-    const { error } = await supabase.from('coupons').delete().eq('id', id)
-    if (error) alert('Error al eliminar: ' + error.message)
-    else fetchData()
+  const handleDelete = async (coupon: Coupon) => {
+    if (!coupon.is_active) return
+    if (!window.confirm(`¿Desactivar el cupón ${coupon.code}? Se conserva su historial.`)) return
+    try {
+      await postAsSoffAdmin('/api/admin/coupons', {
+        id: coupon.id, code: coupon.code, discountPercentage: Number(coupon.discount_percentage),
+        maxUses: coupon.max_uses, isActive: false
+      })
+      await fetchData()
+    } catch (err) {alert(err instanceof Error ? err.message : 'No pudo desactivarse.')}
   }
 
   if (loading && coupons.length === 0) return <div className="p-8">Cargando cupones...</div>
@@ -107,7 +103,7 @@ export default function AdminCoupons() {
             <div className="flex gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">% Descuento</label>
-                <input type="number" min="1" max="100" value={discount} onChange={e => setDiscount(Number(e.target.value))} required className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none" />
+                <input type="number" min="1" max="80" step="0.01" value={discount} onChange={e => setDiscount(Number(e.target.value))} required className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none" />
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Límite usos (vacio=inf)</label>
@@ -154,7 +150,7 @@ export default function AdminCoupons() {
                 
                 <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
                   <button onClick={() => handleEdit(coupon)} className="flex-1 sm:flex-none p-2 text-blue-600 hover:bg-blue-50 rounded-lg flex justify-center"><Edit2 size={18} /></button>
-                  <button onClick={() => handleDelete(coupon.id)} className="flex-1 sm:flex-none p-2 text-red-600 hover:bg-red-50 rounded-lg flex justify-center"><Trash2 size={18} /></button>
+                  <button onClick={() => handleDelete(coupon)} disabled={!coupon.is_active} title="Desactivar (sin borrar historial)" className="flex-1 sm:flex-none p-2 text-red-600 hover:bg-red-50 rounded-lg flex justify-center"><Trash2 size={18} /></button>
                 </div>
               </div>
             ))

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Mail, Lock } from 'lucide-react'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -24,21 +25,7 @@ export default function LoginPage() {
     })
 
     if (error) {
-      // Si el usuario no existe, intentamos registrarlo automáticamente (opcional)
-      if (error.message.includes('Invalid login credentials')) {
-         const { error: signUpError } = await supabase.auth.signUp({
-           email,
-           password,
-         })
-         if (signUpError) {
-             setError(signUpError.message)
-         } else {
-             router.push('/')
-             router.refresh()
-         }
-      } else {
-          setError(error.message)
-      }
+      setError('No pudimos iniciar sesión. Revisá el correo y la contraseña, o recuperá tu acceso.')
     } else {
       router.push('/')
       router.refresh()
@@ -69,6 +56,9 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <div className="mb-4 text-right text-sm">
+            <Link href="/recuperar-contrasena" className="text-brand-primary underline">¿Olvidaste tu contraseña?</Link>
+          </div>
           <form className="space-y-6" onSubmit={handleEmailLogin}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">

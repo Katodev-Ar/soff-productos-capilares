@@ -54,6 +54,8 @@ export default function ProductCard({ product, userRole, showCode = false }: Pro
         >
           {product.image_url && !imageFailed ? (
             <img
+              loading="lazy"
+              decoding="async"
               src={product.image_url}
               alt={product.name}
               onError={() => setImageFailed(true)}

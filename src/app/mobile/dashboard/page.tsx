@@ -33,7 +33,7 @@ export default function MobileDashboardPage() {
 
       const [ordersRes, pendingRes, productsRes, lowStockRes] = await Promise.all([
         supabase.from('orders').select('id, total', { count: 'exact' }),
-        supabase.from('orders').select('id', { count: 'exact' }).eq('status', 'pending'),
+        supabase.from('orders').select('id', { count: 'exact' }).eq('status', 'pendiente'),
         supabase.from('products').select('id', { count: 'exact' }),
         supabase.from('products').select('id', { count: 'exact' }).lt('stock', 10),
       ])

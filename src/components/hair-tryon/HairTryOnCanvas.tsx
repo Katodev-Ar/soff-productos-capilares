@@ -5,7 +5,6 @@ import {
   Camera,
   Upload,
   User,
-  Sparkles,
   CameraOff,
   FlipHorizontal,
   Download,
@@ -16,11 +15,17 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { HairColorShade, InputMode } from './types'
+import { HairDyeWebGLRenderer } from './HairDyeWebGLRenderer'
+import type {
+  ImageSegmenter as MediaPipeImageSegmenter,
+  ImageSegmenterResult,
+} from '@mediapipe/tasks-vision'
 
 interface HairTryOnCanvasProps {
   selectedShade: HairColorShade | null
   intensity: number
   lightnessLift: number
+  gloss?: number
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -40,6 +45,7 @@ export default function HairTryOnCanvas({
   selectedShade,
   intensity,
   lightnessLift,
+  gloss = 0.7,
 }: HairTryOnCanvasProps) {
   // Modes & Status
   const [mode, setMode] = useState<InputMode>('sample')
@@ -58,13 +64,11 @@ export default function HairTryOnCanvas({
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null)
   const mainCanvasRef = useRef<HTMLCanvasElement>(null)
-  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const offscreenImageDataRef = useRef<ImageData | null>(null)
+  const webglRendererRef = useRef<HairDyeWebGLRenderer | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // MediaPipe task references
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const segmenterRef = useRef<any>(null)
+  const segmenterRef = useRef<MediaPipeImageSegmenter | null>(null)
   const currentRunningModeRef = useRef<'VIDEO' | 'IMAGE'>('IMAGE')
   const animFrameIdRef = useRef<number | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -74,7 +78,180 @@ export default function HairTryOnCanvas({
   const staticMaskDataRef = useRef<Float32Array | null>(null)
   const staticMaskDimsRef = useRef<{ width: number; height: number } | null>(null)
 
-  // 1. Initialize MediaPipe Hair Segmenter
+  // 1. Stop camera utility
+  const stopCameraStream = useCallback(() => {
+    if (animFrameIdRef.current) {
+      cancelAnimationFrame(animFrameIdRef.current)
+      animFrameIdRef.current = null
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+  }, [])
+
+  // 2. Composite Hair Layer Function with GPU WebGL Renderer
+  const renderCompositedFrame = useCallback(
+    (
+      source: TexImageSource,
+      maskData: Float32Array,
+      maskW: number,
+      maskH: number,
+      targetW: number,
+      targetH: number,
+      mirror: boolean
+    ) => {
+      const mainCanvas = mainCanvasRef.current
+      if (!mainCanvas) return
+
+      if (!webglRendererRef.current) {
+        try {
+          webglRendererRef.current = new HairDyeWebGLRenderer(mainCanvas)
+        } catch (e) {
+          console.error('Failed to initialize HairDyeWebGLRenderer:', e)
+          return
+        }
+      }
+
+      const rgb = selectedShade ? hexToRgb(selectedShade.hex) : { r: 0, g: 0, b: 0 }
+      const targetRgb: [number, number, number] = [
+        rgb.r / 255.0,
+        rgb.g / 255.0,
+        rgb.b / 255.0,
+      ]
+
+      webglRendererRef.current.render(
+        source,
+        maskData,
+        maskW,
+        maskH,
+        targetW,
+        targetH,
+        {
+          targetRgb,
+          intensity: selectedShade ? intensity : 0.0,
+          lightnessLift: (selectedShade?.lightnessAdjustment || 0) * 0.5 + lightnessLift * 0.5,
+          gloss: gloss !== undefined ? gloss : 0.7,
+          splitMode,
+          splitPosition,
+          showOriginal: showOriginal || !selectedShade,
+          mirror,
+        }
+      )
+    },
+    [selectedShade, intensity, lightnessLift, gloss, showOriginal, splitMode, splitPosition]
+  )
+
+  // 3. Video processing loop for Camera mode
+  const processVideoFrameRef = useRef<() => void>(() => {})
+
+  const processVideoFrame = useCallback(() => {
+    const video = videoRef.current
+    const segmenter = segmenterRef.current
+    if (!video || !segmenter || video.readyState < 2 || video.paused || video.ended) {
+      animFrameIdRef.current = requestAnimationFrame(() => {
+        processVideoFrameRef.current()
+      })
+      return
+    }
+
+    const timestamp = performance.now()
+    try {
+      segmenter.segmentForVideo(video, timestamp, (result: ImageSegmenterResult) => {
+        const maskObj =
+          result.confidenceMasks && result.confidenceMasks.length > 1
+            ? result.confidenceMasks[1]
+            : result.confidenceMasks?.[0]
+
+        if (maskObj) {
+          const maskData = maskObj.getAsFloat32Array()
+          renderCompositedFrame(
+            video,
+            maskData,
+            maskObj.width,
+            maskObj.height,
+            video.videoWidth || 640,
+            video.videoHeight || 480,
+            isMirror
+          )
+        }
+      })
+    } catch (e) {
+      console.error('segmentForVideo error:', e)
+    }
+
+    animFrameIdRef.current = requestAnimationFrame(() => {
+      processVideoFrameRef.current()
+    })
+  }, [renderCompositedFrame, isMirror])
+
+  useEffect(() => {
+    processVideoFrameRef.current = processVideoFrame
+  }, [processVideoFrame])
+
+  // 4. Segment and Render a Static Image (Upload or Sample)
+  const processStaticImage = useCallback(
+    async (img: HTMLImageElement) => {
+      const segmenter = segmenterRef.current
+      if (!segmenter) return
+
+      try {
+        if (currentRunningModeRef.current !== 'IMAGE') {
+          await segmenter.setOptions({ runningMode: 'IMAGE' })
+          currentRunningModeRef.current = 'IMAGE'
+        }
+
+        segmenter.segment(img, (result: ImageSegmenterResult) => {
+          const maskObj =
+            result.confidenceMasks && result.confidenceMasks.length > 1
+              ? result.confidenceMasks[1]
+              : result.confidenceMasks?.[0]
+
+          if (maskObj) {
+            const maskData = maskObj.getAsFloat32Array()
+            staticMaskDataRef.current = maskData
+            staticMaskDimsRef.current = { width: maskObj.width, height: maskObj.height }
+            staticImageRef.current = img
+
+            renderCompositedFrame(
+              img,
+              maskData,
+              maskObj.width,
+              maskObj.height,
+              img.naturalWidth || img.width,
+              img.naturalHeight || img.height,
+              false
+            )
+          }
+        })
+      } catch (err) {
+        console.error('Error segmenting static image:', err)
+      }
+    },
+    [renderCompositedFrame]
+  )
+
+  // 5. Load Sample Image
+  const loadSampleImage = useCallback(
+    (src: string) => {
+      stopCameraStream()
+      setMode('sample')
+      setSelectedSample(src)
+
+      const img = new window.Image()
+      img.crossOrigin = 'anonymous'
+      img.src = src
+      img.onload = () => {
+        processStaticImage(img)
+      }
+    },
+    [stopCameraStream, processStaticImage]
+  )
+
+  // 6. Initialize MediaPipe Hair Segmenter
   useEffect(() => {
     let isMounted = true
 
@@ -87,7 +264,7 @@ export default function HairTryOnCanvas({
         const { FilesetResolver, ImageSegmenter } = await import('@mediapipe/tasks-vision')
 
         // Resolve WASM binaries (first try local /wasm, then jsdelivr CDN fallback)
-        let vision: any
+        let vision: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>
         try {
           vision = await FilesetResolver.forVisionTasks('/wasm')
         } catch {
@@ -120,7 +297,7 @@ export default function HairTryOnCanvas({
 
         // Automatically trigger initial sample photo
         loadSampleImage('/samples/model1.jpg')
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error initializing MediaPipe Hair Segmenter:', err)
         if (isMounted) {
           setModelError(
@@ -142,192 +319,19 @@ export default function HairTryOnCanvas({
           // ignore
         }
       }
+      if (webglRendererRef.current) {
+        try {
+          webglRendererRef.current.destroy()
+        } catch {
+          // ignore
+        }
+        webglRendererRef.current = null
+      }
       stopCameraStream()
     }
-  }, [])
+  }, [loadSampleImage, stopCameraStream])
 
-  // 2. Stop camera utility
-  const stopCameraStream = useCallback(() => {
-    if (animFrameIdRef.current) {
-      cancelAnimationFrame(animFrameIdRef.current)
-      animFrameIdRef.current = null
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-  }, [])
-
-  // 3. Composite Hair Layer Function
-  const renderCompositedFrame = useCallback(
-    (
-      source: CanvasImageSource,
-      maskData: Float32Array,
-      maskW: number,
-      maskH: number,
-      targetW: number,
-      targetH: number,
-      mirror: boolean
-    ) => {
-      const mainCanvas = mainCanvasRef.current
-      if (!mainCanvas) return
-      const mainCtx = mainCanvas.getContext('2d', { willReadFrequently: false })
-      if (!mainCtx) return
-
-      if (mainCanvas.width !== targetW || mainCanvas.height !== targetH) {
-        mainCanvas.width = targetW
-        mainCanvas.height = targetH
-      }
-
-      // Initialize or resize offscreen canvas
-      if (!offscreenCanvasRef.current) {
-        offscreenCanvasRef.current = document.createElement('canvas')
-      }
-      const offCanvas = offscreenCanvasRef.current
-      if (offCanvas.width !== maskW || offCanvas.height !== maskH) {
-        offCanvas.width = maskW
-        offCanvas.height = maskH
-        offscreenImageDataRef.current = offCanvas
-          .getContext('2d', { willReadFrequently: true })!
-          .createImageData(maskW, maskH)
-      }
-      const offCtx = offCanvas.getContext('2d')
-      const imgData = offscreenImageDataRef.current
-      if (!offCtx || !imgData) return
-
-      // Populate tinted hair mask ImageData
-      const rgb = selectedShade ? hexToRgb(selectedShade.hex) : { r: 0, g: 0, b: 0 }
-      const data = imgData.data
-
-      for (let i = 0; i < maskData.length; i++) {
-        const conf = maskData[i]
-        let alpha = 0
-        // Soft-threshold between 0.15 and 0.85 for anti-aliased hair strands
-        if (conf > 0.15) {
-          const norm = Math.min(1, (conf - 0.15) / 0.7)
-          alpha = Math.round(norm * 255)
-        }
-        const idx = i * 4
-        data[idx] = rgb.r
-        data[idx + 1] = rgb.g
-        data[idx + 2] = rgb.b
-        data[idx + 3] = alpha
-      }
-      offCtx.putImageData(imgData, 0, 0)
-
-      // Step A: Draw Original Image/Video to Main Canvas
-      mainCtx.save()
-      if (mirror) {
-        mainCtx.translate(targetW, 0)
-        mainCtx.scale(-1, 1)
-      }
-      mainCtx.drawImage(source, 0, 0, targetW, targetH)
-      mainCtx.restore()
-
-      // If user holds "Ver original" or no shade is selected, we're done!
-      if (showOriginal || !selectedShade) {
-        return
-      }
-
-      // Step B: Hair Recoloring Compositing
-      mainCtx.save()
-
-      // Handle split slider mode
-      if (splitMode) {
-        mainCtx.beginPath()
-        mainCtx.rect(targetW * splitPosition, 0, targetW * (1 - splitPosition), targetH)
-        mainCtx.clip()
-      }
-
-      // If mirrored, flip the tinted hair overlay to match
-      if (mirror) {
-        mainCtx.translate(targetW, 0)
-        mainCtx.scale(-1, 1)
-      }
-
-      // 1. Primary blend: 'color' (Preserves luminosity, highlights and hair texture)
-      mainCtx.globalAlpha = intensity
-      mainCtx.globalCompositeOperation = 'color'
-      mainCtx.drawImage(offCanvas, 0, 0, targetW, targetH)
-
-      // 2. Secondary blend: 'soft-light' for lightening dark hair (blonde/copper lift)
-      const combinedLift = (selectedShade.lightnessAdjustment || 0) * 0.5 + lightnessLift * 0.5
-      if (combinedLift > 0.05) {
-        mainCtx.globalAlpha = intensity * combinedLift * 0.65
-        mainCtx.globalCompositeOperation = 'soft-light'
-        mainCtx.drawImage(offCanvas, 0, 0, targetW, targetH)
-      }
-
-      mainCtx.restore()
-
-      // Draw split divider line if split mode is active
-      if (splitMode) {
-        mainCtx.save()
-        mainCtx.strokeStyle = '#ffffff'
-        mainCtx.lineWidth = 3
-        mainCtx.shadowColor = 'rgba(0,0,0,0.5)'
-        mainCtx.shadowBlur = 6
-        mainCtx.beginPath()
-        mainCtx.moveTo(targetW * splitPosition, 0)
-        mainCtx.lineTo(targetW * splitPosition, targetH)
-        mainCtx.stroke()
-
-        // Labels
-        mainCtx.fillStyle = 'rgba(0,0,0,0.65)'
-        mainCtx.fillRect(10, targetH - 34, 80, 24)
-        mainCtx.fillRect(targetW - 90, targetH - 34, 80, 24)
-
-        mainCtx.fillStyle = '#ffffff'
-        mainCtx.font = 'bold 11px sans-serif'
-        mainCtx.fillText('ORIGINAL', 20, targetH - 18)
-        mainCtx.fillText('CON COLOR', targetW - 82, targetH - 18)
-        mainCtx.restore()
-      }
-    },
-    [selectedShade, intensity, lightnessLift, showOriginal, splitMode, splitPosition]
-  )
-
-  // 4. Video processing loop for Camera mode
-  const processVideoFrame = useCallback(() => {
-    const video = videoRef.current
-    const segmenter = segmenterRef.current
-    if (!video || !segmenter || video.readyState < 2 || video.paused || video.ended) {
-      animFrameIdRef.current = requestAnimationFrame(processVideoFrame)
-      return
-    }
-
-    const timestamp = performance.now()
-    try {
-      segmenter.segmentForVideo(video, timestamp, (result: any) => {
-        const maskObj =
-          result.confidenceMasks && result.confidenceMasks.length > 1
-            ? result.confidenceMasks[1]
-            : result.confidenceMasks?.[0]
-
-        if (maskObj) {
-          const maskData = maskObj.getAsFloat32Array()
-          renderCompositedFrame(
-            video,
-            maskData,
-            maskObj.width,
-            maskObj.height,
-            video.videoWidth || 640,
-            video.videoHeight || 480,
-            isMirror
-          )
-        }
-      })
-    } catch (e) {
-      console.error('segmentForVideo error:', e)
-    }
-
-    animFrameIdRef.current = requestAnimationFrame(processVideoFrame)
-  }, [renderCompositedFrame, isMirror])
-
-  // 5. Start Camera
+  // 7. Start Camera
   const startCamera = async (newFacingMode = facingMode) => {
     stopCameraStream()
     setCameraError(null)
@@ -354,75 +358,18 @@ export default function HairTryOnCanvas({
         videoRef.current.srcObject = stream
         videoRef.current.play()
         videoRef.current.onloadedmetadata = () => {
-          animFrameIdRef.current = requestAnimationFrame(processVideoFrame)
+          animFrameIdRef.current = requestAnimationFrame(() => {
+            processVideoFrameRef.current()
+          })
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Camera access error:', err)
       setCameraError(
         'No se pudo acceder a la cámara. Verifique que los permisos estén habilitados o intente probando con una foto.'
       )
     }
   }
-
-  // 6. Segment and Render a Static Image (Upload or Sample)
-  const processStaticImage = useCallback(
-    async (img: HTMLImageElement) => {
-      const segmenter = segmenterRef.current
-      if (!segmenter) return
-
-      try {
-        if (currentRunningModeRef.current !== 'IMAGE') {
-          await segmenter.setOptions({ runningMode: 'IMAGE' })
-          currentRunningModeRef.current = 'IMAGE'
-        }
-
-        segmenter.segment(img, (result: any) => {
-          const maskObj =
-            result.confidenceMasks && result.confidenceMasks.length > 1
-              ? result.confidenceMasks[1]
-              : result.confidenceMasks?.[0]
-
-          if (maskObj) {
-            const maskData = maskObj.getAsFloat32Array()
-            staticMaskDataRef.current = maskData
-            staticMaskDimsRef.current = { width: maskObj.width, height: maskObj.height }
-            staticImageRef.current = img
-
-            renderCompositedFrame(
-              img,
-              maskData,
-              maskObj.width,
-              maskObj.height,
-              img.naturalWidth || img.width,
-              img.naturalHeight || img.height,
-              false
-            )
-          }
-        })
-      } catch (err) {
-        console.error('Error segmenting static image:', err)
-      }
-    },
-    [renderCompositedFrame]
-  )
-
-  // 7. Load Sample Image
-  const loadSampleImage = useCallback(
-    (src: string) => {
-      stopCameraStream()
-      setMode('sample')
-      setSelectedSample(src)
-
-      const img = new window.Image()
-      img.crossOrigin = 'anonymous'
-      img.src = src
-      img.onload = () => {
-        processStaticImage(img)
-      }
-    },
-    [stopCameraStream, processStaticImage]
-  )
 
   // 8. Handle Photo Upload
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -465,6 +412,7 @@ export default function HairTryOnCanvas({
     selectedShade,
     intensity,
     lightnessLift,
+    gloss,
     showOriginal,
     splitMode,
     splitPosition,

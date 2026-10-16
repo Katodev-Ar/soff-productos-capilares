@@ -1,240 +1,72 @@
 'use client'
-
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
-import { Search, Edit3, Save, X, Package, Plus, Trash2 } from 'lucide-react'
-
-export default function AdminProductosPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [products, setProducts] = useState<any[]>([])
-  const [search, setSearch] = useState('')
-  
-  // Modal state
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<any>(null) // null = new product
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    how_to_use: '',
-    image_url: '',
-    stock: 0,
-    price_minorista: 0,
-    price_mayorista: 0,
-    price_peluquero: 0,
-    price_revendedor: 0
-  })
-
-  useEffect(() => {
-    loadProducts()
-  }, [])
-
-  async function loadProducts() {
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .order('name', { ascending: true })
-
-    if (data) setProducts(data)
-    setLoading(false)
-  }
-
-  const openNewModal = () => {
-    setEditingProduct(null)
-    setFormData({
-      name: '', description: '', how_to_use: '', image_url: '',
-      stock: 0, price_minorista: 0, price_mayorista: 0, price_peluquero: 0, price_revendedor: 0
-    })
-    setIsModalOpen(true)
-  }
-
-  const openEditModal = (product: any) => {
-    setEditingProduct(product)
-    setFormData({
-      name: product.name || '',
-      description: product.description || '',
-      how_to_use: product.how_to_use || '',
-      image_url: product.image_url || '',
-      stock: product.stock || 0,
-      price_minorista: product.price_minorista || 0,
-      price_mayorista: product.price_mayorista || 0,
-      price_peluquero: product.price_peluquero || 0,
-      price_revendedor: product.price_revendedor || 0
-    })
-    setIsModalOpen(true)
-  }
-
-  const saveProduct = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (editingProduct) {
-      // Update
-      const { error } = await supabase.from('products').update(formData).eq('id', editingProduct.id)
-      if (error) alert('Error: ' + error.message)
-    } else {
-      // Insert
-      const { error } = await supabase.from('products').insert([formData])
-      if (error) alert('Error: ' + error.message)
+import {useEffect,useState} from 'react'
+import Link from 'next/link'
+import {supabase} from '@/lib/supabase/client'
+import {PRODUCT_CATEGORIES,formatPrice,type Product} from '@/lib/catalog'
+import {Plus,Edit3,Package,AlertTriangle} from 'lucide-react'
+type Editable={name:string;category:string;description:string;how_to_use:string;image_url:string;barcode:string;internal_code:string;price_minorista:number;price_mayorista:number;price_peluquero:number;price_revendedor:number}
+const empty:Editable={name:'',category:'SIN CATEGORIA',description:'',how_to_use:'',image_url:'',barcode:'',internal_code:'',price_minorista:0,price_mayorista:0,price_peluquero:0,price_revendedor:0}
+export default function AdminProductosPage(){
+  const [products,setProducts]=useState<(Product&{how_to_use?:string|null})[]>([])
+  const [loading,setLoading]=useState(true)
+  const [error,setError]=useState('')
+  const [search,setSearch]=useState('')
+  const [editing,setEditing]=useState<string|null>(null)
+  const [visible,setVisible]=useState(false)
+  const [form,setForm]=useState<Editable>(empty)
+  const [saving,setSaving]=useState(false)
+  async function load(){
+    setLoading(true);setError('')
+    const all:(Product&{how_to_use?:string|null})[]=[]
+    for(let page=0;page<10;page++){
+      const {data,error}=await supabase.from('products').select('*').order('id').range(page*500,page*500+499)
+      if(error){setError('No fue posible consultar los productos.');break}
+      all.push(...(data||[]))
+      if((data||[]).length<500)break
+      if(page===9){setError('Hay más de 5000 productos: ampliar paginación.');break}
     }
-    
-    setIsModalOpen(false)
-    loadProducts()
+    setProducts(all);setLoading(false)
   }
-
-  const deleteProduct = async (id: string) => {
-    if (!confirm('¿Seguro que querés eliminar este producto?')) return
-    await supabase.from('products').delete().eq('id', id)
-    loadProducts()
+  useEffect(()=>{void load()},[])
+  function open(product?:Product&{how_to_use?:string|null}){
+    setEditing(product?.id||null)
+    setForm(product?{
+      name:product.name||'',category:product.category||'SIN CATEGORIA',description:product.description||'',how_to_use:product.how_to_use||'',image_url:product.image_url||'',barcode:product.barcode||'',internal_code:product.internal_code||'',
+      price_minorista:Number(product.price_minorista)||0,price_mayorista:Number(product.price_mayorista)||0,price_peluquero:Number(product.price_peluquero)||0,price_revendedor:Number(product.price_revendedor)||0
+    }:empty)
+    setVisible(true);setError('')
   }
-
-  const filtered = products.filter(p =>
-    p.name?.toLowerCase().includes(search.toLowerCase())
-  )
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
-      </div>
-    )
+  async function save(event:React.FormEvent){
+    event.preventDefault();if(saving)return
+    setSaving(true);setError('')
+    try{
+      const {data:{session}}=await supabase.auth.getSession()
+      if(!session?.access_token)throw new Error('Tu sesión venció. Volvé a ingresar.')
+      const res=await fetch('/api/admin/catalog/product',{method:editing?'PATCH':'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({...form,...(editing?{id:editing}:{})})})
+      const body=await res.json().catch(()=>({error:'Respuesta inválida del servidor.'}))
+      if(!res.ok)throw new Error(body.error||'Error al guardar el producto.')
+      setVisible(false);await load()
+    }catch(e){setError(e instanceof Error?e.message:'No se pudo guardar.')}
+    finally{setSaving(false)}
   }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Package className="h-8 w-8" /> Catálogo
-          </h1>
-          <p className="text-gray-500 mt-1">{products.length} productos registrados</p>
-        </div>
-        <button 
-          onClick={openNewModal}
-          className="bg-black text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-gray-800"
-        >
-          <Plus className="h-5 w-5" /> Nuevo Producto
-        </button>
-      </div>
-
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Buscar producto..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-black focus:border-black outline-none"
-        />
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-sm text-gray-500">
-                <th className="p-4 font-semibold w-12"></th>
-                <th className="p-4 font-semibold">Producto</th>
-                <th className="p-4 font-semibold">Minorista</th>
-                <th className="p-4 font-semibold">Mayorista</th>
-                <th className="p-4 font-semibold">Stock</th>
-                <th className="p-4 font-semibold text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(product => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="p-4">
-                    {product.image_url ? (
-                      <img src={product.image_url} alt="" className="w-12 h-12 rounded object-cover border border-gray-200" />
-                    ) : (
-                      <div className="w-12 h-12 rounded bg-gray-100 border border-gray-200" />
-                    )}
-                  </td>
-                  <td className="p-4">
-                    <div className="font-medium text-gray-900 line-clamp-2">{product.name}</div>
-                  </td>
-                  <td className="p-4 text-sm">${product.price_minorista?.toLocaleString('es-AR')}</td>
-                  <td className="p-4 text-sm">${product.price_mayorista?.toLocaleString('es-AR')}</td>
-                  <td className="p-4">
-                    <span className={`text-sm font-medium ${product.stock <= 0 ? 'text-red-600' : product.stock < 10 ? 'text-yellow-600' : 'text-green-600'}`}>
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button onClick={() => openEditModal(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg mr-2">
-                      <Edit3 className="h-5 w-5" />
-                    </button>
-                    <button onClick={() => deleteProduct(product.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal for Create/Edit */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
-              <h2 className="text-xl font-bold">{editingProduct ? 'Editar Producto' : 'Nuevo Producto'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            <form onSubmit={saveProduct} className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del producto *</label>
-                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border-gray-300 rounded-lg p-2 border focus:border-black outline-none" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL de Imagen</label>
-                <input type="text" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} className="w-full border-gray-300 rounded-lg p-2 border focus:border-black outline-none" placeholder="https://ejemplo.com/foto.jpg" />
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock *</label>
-                  <input required type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: Number(e.target.value)})} className="w-full border-gray-300 rounded-lg p-2 border focus:border-black outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio Minorista *</label>
-                  <input required type="number" step="0.01" value={formData.price_minorista} onChange={e => setFormData({...formData, price_minorista: Number(e.target.value)})} className="w-full border-gray-300 rounded-lg p-2 border focus:border-black outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio Mayorista *</label>
-                  <input required type="number" step="0.01" value={formData.price_mayorista} onChange={e => setFormData({...formData, price_mayorista: Number(e.target.value)})} className="w-full border-gray-300 rounded-lg p-2 border focus:border-black outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">P. Peluquero</label>
-                  <input type="number" step="0.01" value={formData.price_peluquero} onChange={e => setFormData({...formData, price_peluquero: Number(e.target.value)})} className="w-full border-gray-300 rounded-lg p-2 border focus:border-black outline-none" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <textarea rows={4} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full border-gray-300 rounded-lg p-2 border focus:border-black outline-none" placeholder="Fórmula pensada para acompañar tu rutina..."></textarea>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Modo de Uso</label>
-                <textarea rows={3} value={formData.how_to_use} onChange={e => setFormData({...formData, how_to_use: e.target.value})} className="w-full border-gray-300 rounded-lg p-2 border focus:border-black outline-none" placeholder="Aplicar sobre cabello húmedo..."></textarea>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg">Cancelar</button>
-                <button type="submit" className="px-5 py-2 bg-black text-white font-medium rounded-lg hover:bg-gray-800">Guardar Producto</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+  const filtered=products.filter(p=>(p.name+' '+(p.barcode||'')+' '+(p.internal_code||'')).toLocaleLowerCase('es-AR').includes(search.toLocaleLowerCase('es-AR')))
+  return <div className="space-y-6">
+    <div className="flex flex-wrap justify-between gap-3"><div><h1 className="text-3xl font-bold flex items-center gap-2"><Package/> Catálogo</h1><p className="text-gray-600">{products.length} productos registrados</p></div><button onClick={()=>open()} className="bg-black text-white rounded-lg px-4 py-2 flex items-center gap-2"><Plus size={18}/>Nuevo producto</button></div>
+    <p className="border border-amber-200 bg-amber-50 p-3 rounded-lg text-sm text-amber-900">El stock se modifica desde <Link className="font-semibold underline" href="/admin/stock">Importar Stock</Link>, para conservar la trazabilidad. No se permite eliminar productos desde este editor: podrían tener pedidos asociados. <Link className="underline" href="/admin/calidad-catalogo">Ver auditoría del catálogo</Link>.</p>
+    {error&&<p className="text-red-800 bg-red-50 p-3 rounded-lg" role="alert">{error}</p>}
+    <input className="w-full border rounded-lg p-3" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nombre, código o barras"/>
+    {loading?<p>Cargando productos…</p>:<div className="overflow-x-auto rounded-xl border bg-white"><table className="w-full text-sm"><thead className="bg-gray-50"><tr>{['Producto','Minorista','Mayorista','Stock','Editar'].map(h=><th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{filtered.slice(0,500).map(p=><tr key={p.id} className="border-t"><td className="p-3 font-medium">{p.name}</td><td className="p-3">{formatPrice(p.price_minorista)}</td><td className="p-3">{formatPrice(p.price_mayorista)}</td><td className="p-3">{p.stock}</td><td className="p-3"><button aria-label={`Editar ${p.name}`} onClick={()=>open(p)}><Edit3 size={18}/></button></td></tr>)}</tbody></table>{filtered.length>500&&<p className="p-3 text-xs text-gray-600">Mostrando 500 resultados. Refiná la búsqueda.</p>}</div>}
+    {visible&&<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3"><form onSubmit={save} className="max-w-3xl w-full max-h-[90vh] overflow-auto rounded-xl bg-white p-5 space-y-4"><h2 className="text-xl font-bold">{editing?'Editar producto':'Nuevo producto'}</h2>
+      <p className="text-sm text-gray-600 flex items-start gap-2"><AlertTriangle size={16} className="shrink-0"/>Los precios en cero para ciertos canales indican que no hay precio de venta. No ingreses descripciones ni modos de uso sin documentación del fabricante.</p>
+      <label className="block text-sm">Nombre *<input required maxLength={240} value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="block border rounded-lg p-2 w-full"/></label>
+      <label className="block text-sm">Categoría<select className="block w-full border rounded-lg p-2" value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{PRODUCT_CATEGORIES.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+      <div className="grid sm:grid-cols-2 gap-3">{(['barcode','internal_code'] as const).map(k=><label key={k} className="text-sm">{k==='barcode'?'Código de barras':'Código interno'}<input value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} className="block border rounded-lg p-2 w-full"/></label>)}</div>
+      <label className="block text-sm">URL imagen HTTPS<input value={form.image_url} onChange={e=>setForm({...form,image_url:e.target.value})} className="block border rounded-lg p-2 w-full"/></label>
+      <div className="grid sm:grid-cols-2 gap-3">{(['price_minorista','price_mayorista','price_peluquero','price_revendedor'] as const).map(k=><label key={k} className="text-sm">{k.replace('price_','Precio ')}<input type="number" required step="0.01" min={k==='price_minorista'?'0.01':'0'} value={form[k]} onChange={e=>setForm({...form,[k]:Number(e.target.value)})} className="block border rounded-lg p-2 w-full"/></label>)}</div>
+      <label className="block text-sm">Descripción<textarea rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} className="block border rounded-lg p-2 w-full"/></label>
+      <label className="block text-sm">Modo de uso (solo información verificada)<textarea rows={3} value={form.how_to_use} onChange={e=>setForm({...form,how_to_use:e.target.value})} className="block border rounded-lg p-2 w-full"/></label>
+      {error&&<p role="alert" className="text-red-700">{error}</p>}
+      <div className="flex justify-end gap-2"><button type="button" disabled={saving} onClick={()=>{setVisible(false);setError('')}} className="border rounded-lg p-2">Cancelar</button><button disabled={saving} type="submit" className="bg-black text-white rounded-lg p-2 disabled:opacity-50">{saving?'Guardando…':'Guardar producto'}</button></div>
+    </form></div>}
+  </div>
 }

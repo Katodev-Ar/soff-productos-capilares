@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { 
@@ -10,12 +10,15 @@ import {
   Users, 
   Settings,
   UploadCloud,
+  History,
   LogOut,
   Menu,
   X,
   Gift,
   Image as ImageIcon,
-  BadgePercent
+  BadgePercent,
+  FileText,
+  ClipboardCheck
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -24,12 +27,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [authorized, setAuthorized] = useState(false)
+
+  useEffect(() => {
+    let live = true
+    async function check() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!live) return
+      if (!user) { router.replace('/login'); return }
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+      if (!live) return
+      if (data?.role !== 'admin') { router.replace('/'); return }
+      setAuthorized(true)
+    }
+    check()
+    return () => { live = false }
+  }, [router])
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Pedidos', href: '/admin/pedidos', icon: Package },
     { name: 'Productos', href: '/admin/productos', icon: ShoppingBag },
+    { name: 'Auditoría de catálogo', href: '/admin/calidad-catalogo', icon: ClipboardCheck },
     { name: 'Importar Stock', href: '/admin/stock', icon: UploadCloud },
+    { name: 'Movimientos de Stock', href: '/admin/inventario', icon: History },
+    { name: 'Conciliación de cobros', href: '/admin/conciliacion', icon: BadgePercent },
+    { name: 'Control fiscal y contable', href: '/admin/facturacion', icon: FileText },
     { name: 'Usuarios', href: '/admin/usuarios', icon: Users },
     { name: 'Combos', href: '/admin/combos', icon: Gift },
     { name: 'Banners', href: '/admin/banners', icon: ImageIcon },
@@ -40,6 +63,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     await supabase.auth.signOut()
     router.push('/login')
   }
+
+  if (!authorized) return <div className="min-h-screen flex items-center justify-center">Verificando acceso…</div>
 
   return (
     <div className="min-h-screen bg-gray-100 flex mt-[60px]">

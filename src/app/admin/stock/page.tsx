@@ -1,184 +1,60 @@
 'use client'
-
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
-import { UploadCloud, CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react'
+import {useState} from 'react'
 import Link from 'next/link'
-
-export default function AdminStockCSVPage() {
-  const [file, setFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [result, setResult] = useState<{ updated: number, errors: string[] } | null>(null)
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
-      setResult(null)
-    }
-  }
-
-  const processCSV = async () => {
-    if (!file) return
-    setUploading(true)
-    setResult(null)
-
-    const text = await file.text()
-    // Simple CSV parser (assuming comma separated and double quotes for fields with commas)
-    const lines = text.split('\n').filter(line => line.trim() !== '')
-    
-    if (lines.length < 2) {
-      setResult({ updated: 0, errors: ['El archivo está vacío o no tiene el formato correcto.'] })
-      setUploading(false)
-      return
-    }
-
-    const headers = lines[0].toLowerCase().split(',').map(h => h.trim())
-    
-    // Find expected columns: we need something to match (e.g. name or sku), and the fields to update (stock, price)
-    const nameIdx = headers.findIndex(h => h.includes('nombre') || h.includes('name') || h.includes('producto'))
-    const stockIdx = headers.findIndex(h => h.includes('stock') || h.includes('cantidad'))
-    const priceRetailIdx = headers.findIndex(h => h.includes('precio') || h.includes('minorista') || h.includes('retail'))
-    const priceWholesaleIdx = headers.findIndex(h => h.includes('mayorista') || h.includes('wholesale'))
-
-    if (nameIdx === -1) {
-      setResult({ updated: 0, errors: ['No se encontró la columna de Nombre/Producto en el CSV.'] })
-      setUploading(false)
-      return
-    }
-
-    let updatedCount = 0
-    let errors: string[] = []
-
-    // Fetch all products first to match by name
-    const { data: products } = await supabase.from('products').select('id, name')
-
-    if (!products) {
-      setResult({ updated: 0, errors: ['Error al cargar productos de la base de datos.'] })
-      setUploading(false)
-      return
-    }
-
-    // Process each line
-    for (let i = 1; i < lines.length; i++) {
-      // Split by comma but respect quotes
-      const columns = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)?.map(c => c.replace(/^"|"$/g, '').trim()) || []
-      
-      const name = columns[nameIdx]
-      if (!name) continue
-
-      const product = products.find(p => p.name.toLowerCase() === name.toLowerCase())
-      
-      if (!product) {
-        errors.push(`Fila ${i + 1}: Producto no encontrado "${name}"`)
-        continue
-      }
-
-      const updates: any = {}
-      if (stockIdx !== -1 && columns[stockIdx]) {
-        updates.stock = parseInt(columns[stockIdx], 10)
-      }
-      if (priceRetailIdx !== -1 && columns[priceRetailIdx]) {
-        updates.price_retail = parseFloat(columns[priceRetailIdx].replace(/[^0-9.-]+/g, ''))
-      }
-      if (priceWholesaleIdx !== -1 && columns[priceWholesaleIdx]) {
-        updates.price_wholesale = parseFloat(columns[priceWholesaleIdx].replace(/[^0-9.-]+/g, ''))
-      }
-
-      if (Object.keys(updates).length > 0) {
-        const { error } = await supabase
-          .from('products')
-          .update(updates)
-          .eq('id', product.id)
-        
-        if (error) {
-          errors.push(`Fila ${i + 1}: Error al actualizar "${name}" - ${error.message}`)
-        } else {
-          updatedCount++
-        }
-      }
-    }
-
-    setResult({ updated: updatedCount, errors })
-    setUploading(false)
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 mt-16">
-      <div className="max-w-3xl mx-auto">
-        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-black mb-6">
-          <ArrowLeft className="h-4 w-4" /> Volver al Panel
-        </Link>
-        
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
-            <UploadCloud className="h-7 w-7" /> Importar Stock (CSV)
-          </h1>
-          <p className="text-gray-500 mb-8">
-            Subí un archivo CSV para actualizar masivamente el stock y los precios de tus productos.
-            El sistema buscará coincidencias por el <strong>Nombre del producto</strong>.
-          </p>
-
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50">
-            <input 
-              type="file" 
-              accept=".csv" 
-              onChange={handleFileChange}
-              className="hidden" 
-              id="csv-upload"
-            />
-            <label 
-              htmlFor="csv-upload" 
-              className="cursor-pointer flex flex-col items-center justify-center gap-3"
-            >
-              <UploadCloud className="h-10 w-10 text-gray-400" />
-              <span className="text-sm font-medium text-black bg-white border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50">
-                Seleccionar archivo CSV
-              </span>
-              <span className="text-xs text-gray-500">
-                {file ? file.name : 'Ningún archivo seleccionado'}
-              </span>
-            </label>
-          </div>
-
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={processCSV}
-              disabled={!file || uploading}
-              className="bg-black text-white px-6 py-3 rounded-full font-medium hover:bg-gray-800 disabled:bg-gray-300 transition-colors"
-            >
-              {uploading ? 'Procesando...' : 'Actualizar Base de Datos'}
-            </button>
-          </div>
-
-          {result && (
-            <div className={`mt-8 p-6 rounded-xl border ${result.errors.length === 0 ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-              <h3 className="font-bold flex items-center gap-2 mb-4">
-                {result.errors.length === 0 ? (
-                  <><CheckCircle className="h-5 w-5 text-green-600" /> ¡Actualización exitosa!</>
-                ) : (
-                  <><AlertTriangle className="h-5 w-5 text-yellow-600" /> Resultados de la importación</>
-                )}
-              </h3>
-              
-              <p className="text-sm font-medium mb-2">
-                ✅ Se actualizaron {result.updated} productos correctamente.
-              </p>
-
-              {result.errors.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-sm font-semibold text-red-800 mb-2">Advertencias / Errores ({result.errors.length}):</p>
-                  <ul className="text-xs text-red-600 space-y-1 max-h-40 overflow-y-auto bg-white p-3 rounded border border-red-100">
-                    {result.errors.map((err, i) => (
-                      <li key={i}>• {err}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-        </div>
-      </div>
-    </div>
-  )
+import {UploadCloud,ArrowLeft,AlertTriangle,CheckCircle} from 'lucide-react'
+import {parseSoffCatalogCsv,type CatalogRow} from '@/lib/soffCsv'
+import {postAsSoffAdmin} from '@/lib/adminFetch'
+export default function AdminStockCSVPage(){
+ const [rows,setRows]=useState<CatalogRow[]>([])
+ const [filename,setFilename]=useState('')
+ const [error,setError]=useState('')
+ const [result,setResult]=useState('')
+ const [working,setWorking]=useState(false)
+ const [accepted,setAccepted]=useState(false)
+ const read=async(f?:File)=>{
+  setRows([]);setError('');setResult('');setAccepted(false);setFilename(f?.name||'')
+  if(!f)return
+  if(f.size>1000000){setError('CSV máximo 1 MB.');return}
+  try{setRows(parseSoffCatalogCsv(await f.text()))}
+  catch(err){setError(err instanceof Error?err.message:'Archivo CSV incorrecto')}
+ }
+ const apply=async()=>{
+  if(!rows.length||!accepted||working)return
+  if(!window.confirm(`¿Confirmás la actualización de ${rows.length} productos? Este cambio modifica stock y/o precios reales cuando se conecte con Supabase.`))return
+  setWorking(true);setError('');setResult('')
+  try{const x=await postAsSoffAdmin('/api/admin/catalog/bulk',{rows,confirmed:true});setResult(`Se actualizaron ${String(x.updated)} productos correctamente.`);setAccepted(false);setRows([])}
+  catch(err){setError(err instanceof Error?err.message:'Error en importación. No volver a cargar sin comprobar el resultado.')}
+  finally{setWorking(false)}
+ }
+ return <div className="min-h-screen bg-gray-50 py-12 px-4 mt-16">
+  <div className="max-w-5xl mx-auto space-y-5">
+   <Link href="/admin" className="text-sm text-gray-600 flex items-center gap-2"><ArrowLeft size={16}/> Volver al panel</Link>
+   <div className="rounded-2xl border bg-white p-6 space-y-4">
+    <h1 className="text-2xl font-bold flex items-center gap-2"><UploadCloud/> Importación controlada CSV</h1>
+    <p className="text-sm text-gray-700">Ahora se identifica cada producto por <strong>UUID</strong>, <strong>código interno</strong> o <strong>código de barras</strong>; nunca por nombre. Si hay identificadores repetidos en el catálogo, se rechaza el archivo completo sin aplicar cambios.</p>
+    <p className="text-sm text-gray-700">Columnas admitidas: <code>id</code>, <code>codigo_interno</code>, <code>codigo_barras</code>, <code>stock</code>, <code>precio_minorista</code>, <code>precio_mayorista</code>, <code>precio_peluquero</code>, <code>precio_revendedor</code>. Una sola columna de identificación con valor por fila. No se aceptan stocks negativos ni precios 0.</p>
+    <input type="file" accept=".csv,text/csv" aria-label="Seleccionar CSV" onChange={e=>read(e.target.files?.[0])} className="block w-full border rounded-lg p-3" />
+    <p className="text-xs text-gray-500">Archivos de hasta 1 MB o 600 productos; delimitadores coma o punto y coma, UTF-8. Para decimales usá 1250.50 o 1250,50 (sin separadores de miles). No afecta la base hasta confirmar.</p>
+    {filename&&<p className="text-sm">Archivo: <strong>{filename}</strong></p>}
+    {error&&<p className="p-3 border border-red-200 bg-red-50 text-red-800 rounded flex gap-2" role="alert"><AlertTriangle size={20}/>{error}</p>}
+    {result&&<p className="p-3 border border-green-200 bg-green-50 rounded flex gap-2" role="status"><CheckCircle/>{result}</p>}
+    {rows.length>0&&<>
+      <p className="font-semibold">Vista previa: {rows.length} productos preparados</p>
+      <div className="overflow-x-auto border rounded-lg"><table className="text-xs min-w-full">
+       <thead><tr className="bg-gray-100">{['Identificador','Stock','Minorista','Mayorista','Peluquero','Revendedor'].map(x=><th key={x} className="p-2 text-left">{x}</th>)}</tr></thead>
+       <tbody>{rows.slice(0,15).map((row,i)=><tr key={i} className="border-t">
+        <td className="p-2 font-mono">{row.id||row.internal_code||row.barcode}</td>
+        <td className="p-2">{row.stock??'—'}</td><td className="p-2">{row.price_minorista??'—'}</td>
+        <td className="p-2">{row.price_mayorista??'—'}</td><td className="p-2">{row.price_peluquero??'—'}</td>
+        <td className="p-2">{row.price_revendedor??'—'}</td></tr>)}</tbody>
+       </table></div>
+       {rows.length>15&&<p className="text-xs text-gray-500">Se muestran las primeras 15 filas.</p>}
+       <label className="flex gap-2 text-sm items-center"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/>
+         Revisé el archivo y autorizo los cambios. Tengo un respaldo de inventario.</label>
+       <button disabled={!accepted||working} onClick={apply} className="px-5 py-3 bg-black text-white rounded-lg disabled:opacity-30">
+         {working?'Actualizando...':'Confirmar actualización en la base de datos'}</button>
+    </>}
+   </div>
+  </div>
+ </div>
 }

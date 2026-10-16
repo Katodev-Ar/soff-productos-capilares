@@ -15,14 +15,8 @@ export interface HairColorShade {
   hex: string
   description: string
   lightnessAdjustment: number // 0.0 to 1.0 (for lifting dark hair)
-  matchedProduct?: {
-    id: string
-    name: string
-    brand: string
-    price: number
-    image_url: string | null
-    shadeCode: string
-  }
+  // Identificador del producto: NUNCA guardar precios, stock o imagenes aqui.
+  matchedProduct?: { id: string }
 }
 
 export type InputMode = 'camera' | 'upload' | 'sample'

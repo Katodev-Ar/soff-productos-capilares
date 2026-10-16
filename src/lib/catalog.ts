@@ -4,6 +4,7 @@ export type Product = {
   id: string
   name: string
   description: string | null
+  how_to_use?: string | null
   image_url: string | null
   stock: number | null
   category: string | null
@@ -37,7 +38,7 @@ export type CartItem = {
 }
 
 export const PRODUCT_SELECT =
-  'id,name,description,image_url,stock,category,barcode,internal_code,price_base,price_minorista,price_mayorista,price_peluquero,price_revendedor,created_at'
+  'id,name,description,how_to_use,image_url,stock,category,barcode,internal_code,price_base,price_minorista,price_mayorista,price_peluquero,price_revendedor,created_at'
 
 export const PRODUCT_CATEGORIES = [
   'SHAMPOO',

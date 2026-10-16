@@ -32,6 +32,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [quantity, setQuantity] = useState(1)
   const [openSection, setOpenSection] = useState<string | null>('desc')
   const { addToCart } = useCart()
+  const { isFavorite, toggleFavorite } = useFavorites()
 
   useEffect(() => {
     let isMounted = true
@@ -49,12 +50,12 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         currentRole = normalizeRole(profile?.role)
       }
 
-      const { data } = await supabase.from('products').select(PRODUCT_SELECT).eq('id', resolvedParams.id).maybeSingle<Product>()
+      const { data } = await supabase.from('soff_catalog_public').select(PRODUCT_SELECT).eq('id', resolvedParams.id).maybeSingle<Product>()
       let related: Product[] = []
 
       if (data?.category) {
         const { data: relatedData } = await supabase
-          .from('products')
+          .from('soff_catalog_public')
           .select(PRODUCT_SELECT)
           .eq('category', data.category)
           .neq('id', data.id)
@@ -106,8 +107,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const stock = getAvailableStock(product)
   const hasPrice = hasSellablePrice(product, userRole)
   const canAddToCart = stock > 0 && hasPrice
-  const { isFavorite, toggleFavorite } = useFavorites()
-  const fav = product ? isFavorite(product.id) : false
+  const fav = isFavorite(product.id)
 
   const handleAddToCart = () => {
     if (!canAddToCart) return
@@ -234,10 +234,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
             <div className="space-y-4">
               <AccordionSection id="desc" title="Descripción" openSection={openSection} onToggle={toggleSection}>
-                {product.description || 'Fórmula pensada para acompañar tu rutina capilar diaria con acabado profesional.'}
+                {product.description || 'Este producto todavía no tiene descripción verificada. Consultá la información del fabricante.'}
               </AccordionSection>
               <AccordionSection id="uso" title="Modo de uso" openSection={openSection} onToggle={toggleSection}>
-                Aplicar sobre el cabello húmedo, masajear suavemente y enjuagar. Repetir si es necesario.
+                {product.how_to_use || 'No hay indicaciones de uso verificadas en la ficha. Seguí las instrucciones del envase y consultá al fabricante cuando corresponda.'}
               </AccordionSection>
               <AccordionSection id="envios" title="Envíos y retiro" openSection={openSection} onToggle={toggleSection}>
                 Podés coordinar retiro en Av. Independencia 2820 o consultar alternativas de envío desde el checkout.

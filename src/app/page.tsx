@@ -78,7 +78,7 @@ export default function Home() {
       }
 
       const { data, error } = await supabase
-        .from('products')
+        .from('soff_catalog_public')
         .select(PRODUCT_SELECT)
         .order('created_at', { ascending: false })
         .limit(150)
@@ -86,7 +86,7 @@ export default function Home() {
 
       // Fetch one image per category from the entire catalog to avoid missing images
       const { data: catData } = await supabase
-        .from('products')
+        .from('soff_catalog_public')
         .select('category, image_url')
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
@@ -100,12 +100,25 @@ export default function Home() {
         .eq('is_active', true)
         .order('display_order', { ascending: true })
 
-      // Fetch combos
-      const { data: comboData } = await supabase
-        .from('combos')
-        .select('*, combo_products(product:products(*))')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
+      // Productos de combos por la vista segura, sin JOIN a la tabla privada products.
+      const { data: comboData } = await supabase.from('combos')
+        .select('*').eq('is_active', true).order('created_at', { ascending: false })
+      const comboIds = (comboData ?? []).map(c => c.id)
+      const { data: relations } = comboIds.length
+        ? await supabase.from('combo_products').select('combo_id,product_id').in('combo_id', comboIds)
+        : { data: [] as { combo_id: string; product_id: string }[] }
+      const ids = [...new Set((relations ?? []).map(r => r.product_id))]
+      const { data: comboProducts } = ids.length
+        ? await supabase.from('soff_catalog_public').select(PRODUCT_SELECT).in('id', ids).returns<Product[]>()
+        : { data: [] as Product[] }
+      const comboProductMap = new Map((comboProducts ?? []).map(p => [p.id, p]))
+      const safeCombos = (comboData ?? []).map(combo => ({
+        ...combo,
+        combo_products: (relations ?? [])
+          .filter(r => r.combo_id === combo.id)
+          .map(r => ({ product: comboProductMap.get(r.product_id) }))
+          .filter(cp => Boolean(cp.product)),
+      }))
 
       if (isMounted) {
         if (error) {
@@ -114,7 +127,7 @@ export default function Home() {
         } else {
           setProducts(data || [])
           setBanners(bannerData || [])
-          setCombos(comboData || [])
+          setCombos(safeCombos)
           
           const catImgMap: Record<string, string> = {}
           if (catData) {
