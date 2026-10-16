@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight, BadgePercent, MapPin, MessageCircle, PackageSearch, Sparkles, Droplets, Droplet, Palette, Beaker, ShieldCheck, ChevronRight } from 'lucide-react'
 import Header from '@/components/Header'
@@ -63,93 +63,111 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'novedades' | 'ofertas'>('novedades')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    let isMounted = true
+  const loadHome = useCallback(async () => {
+    try {
+      setErrorMessage(null)
+      setLoading(true)
 
-    async function loadHome() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const userPromise = (async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) return 'minorista' as UserRole
+          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+          return normalizeRole(profile?.role)
+        } catch {
+          return 'minorista' as UserRole
+        }
+      })()
 
-      let role: UserRole = 'minorista'
-      if (user) {
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-        role = normalizeRole(profile?.role)
-      }
-
-      const { data, error } = await supabase
+      const catalogPromise = supabase
         .from('soff_catalog_public')
         .select(PRODUCT_SELECT)
         .order('created_at', { ascending: false })
         .limit(150)
         .returns<Product[]>()
 
-      // Fetch one image per category from the entire catalog to avoid missing images
-      const { data: catData } = await supabase
+      const catDataPromise = supabase
         .from('soff_catalog_public')
         .select('category, image_url')
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
         .limit(100)
         .returns<{ category: string | null; image_url: string | null }[]>()
-      
-      // Fetch banners
-      const { data: bannerData } = await supabase
+
+      const bannerPromise = supabase
         .from('banners')
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true })
 
-      // Productos de combos por la vista segura, sin JOIN a la tabla privada products.
-      const { data: comboData } = await supabase.from('combos')
-        .select('*').eq('is_active', true).order('created_at', { ascending: false })
-      const comboIds = (comboData ?? []).map(c => c.id)
-      const { data: relations } = comboIds.length
-        ? await supabase.from('combo_products').select('combo_id,product_id').in('combo_id', comboIds)
-        : { data: [] as { combo_id: string; product_id: string }[] }
-      const ids = [...new Set((relations ?? []).map(r => r.product_id))]
-      const { data: comboProducts } = ids.length
-        ? await supabase.from('soff_catalog_public').select(PRODUCT_SELECT).in('id', ids).returns<Product[]>()
-        : { data: [] as Product[] }
-      const comboProductMap = new Map((comboProducts ?? []).map(p => [p.id, p]))
-      const safeCombos = (comboData ?? []).map(combo => ({
-        ...combo,
-        combo_products: (relations ?? [])
-          .filter(r => r.combo_id === combo.id)
-          .map(r => ({ product: comboProductMap.get(r.product_id) }))
-          .filter(cp => Boolean(cp.product)),
-      }))
+      const comboPromise = supabase
+        .from('combos')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
 
-      if (isMounted) {
-        if (error) {
-          console.error('Error fetching home data:', error)
-          setErrorMessage('Error al cargar la página.')
-        } else {
-          setProducts(data || [])
-          setBanners(bannerData || [])
-          setCombos(safeCombos)
-          
-          const catImgMap: Record<string, string> = {}
-          if (catData) {
-            for (const p of catData) {
-              if (p.category && p.image_url && !catImgMap[p.category]) {
-                catImgMap[p.category.toUpperCase()] = p.image_url
-              }
-            }
-          }
-          setCategoryImages(catImgMap)
-        }
-        setUserRole(role)
-        setLoading(false)
+      const [role, catalogRes, catRes, bannerRes, comboRes] = await Promise.all([
+        userPromise,
+        catalogPromise,
+        catDataPromise,
+        bannerPromise,
+        comboPromise,
+      ])
+
+      if (catalogRes.error) {
+        throw catalogRes.error
       }
-    }
 
-    void loadHome()
+      const comboData = comboRes.data ?? []
+      const comboIds = comboData.map(c => c.id)
+      let safeCombos: any[] = []
 
-    return () => {
-      isMounted = false
+      if (comboIds.length > 0) {
+        const { data: relations } = await supabase
+          .from('combo_products')
+          .select('combo_id,product_id')
+          .in('combo_id', comboIds)
+
+        const ids = [...new Set((relations ?? []).map(r => r.product_id))]
+        const { data: comboProducts } = ids.length
+          ? await supabase.from('soff_catalog_public').select(PRODUCT_SELECT).in('id', ids).returns<Product[]>()
+          : { data: [] as Product[] }
+
+        const comboProductMap = new Map((comboProducts ?? []).map(p => [p.id, p]))
+        safeCombos = comboData.map(combo => ({
+          ...combo,
+          combo_products: (relations ?? [])
+            .filter(r => r.combo_id === combo.id)
+            .map(r => ({ product: comboProductMap.get(r.product_id) }))
+            .filter(cp => Boolean(cp.product)),
+        }))
+      }
+
+      setProducts(catalogRes.data || [])
+      setBanners(bannerRes.data || [])
+      setCombos(safeCombos)
+
+      const catImgMap: Record<string, string> = {}
+      if (catRes.data) {
+        for (const p of catRes.data) {
+          if (p.category && p.image_url && !catImgMap[p.category]) {
+            catImgMap[p.category.toUpperCase()] = p.image_url
+          }
+        }
+      }
+      setCategoryImages(catImgMap)
+      setUserRole(role)
+    } catch (err: any) {
+      console.error('Error fetching home data:', err)
+      setErrorMessage('No pudimos cargar algunos productos del catálogo. Podés reintentar ahora.')
+    } finally {
+      setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    void loadHome()
+  }, [loadHome])
 
   const visibleProducts = useMemo(() => {
     if (activeTab === 'ofertas') {
@@ -291,7 +309,18 @@ export default function Home() {
               </div>
             </div>
 
-            {errorMessage && <div className="mb-6 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">{errorMessage}</div>}
+            {errorMessage && (
+              <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex flex-wrap items-center justify-between gap-3">
+                <span>{errorMessage}</span>
+                <button
+                  type="button"
+                  onClick={() => void loadHome()}
+                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
+                >
+                  Reintentar
+                </button>
+              </div>
+            )}
 
             <AutoCarousel speed={3500}>
               {loading ? (
