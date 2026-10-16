@@ -15,11 +15,11 @@ export interface BusinessBankConfig {
  * una cuenta distinta a la del titular ocasionaría transferencias erróneas.
  */
 export const BUSINESS_BANK_CONFIG: BusinessBankConfig = {
-  titular: process.env.NEXT_PUBLIC_BUSINESS_TITULAR?.trim() || process.env.NEXT_PUBLIC_TRANSFER_TITULAR?.trim() || 'Cristian Benjamin Corbalan',
-  alias: process.env.NEXT_PUBLIC_BUSINESS_ALIAS?.trim() || process.env.NEXT_PUBLIC_TRANSFER_ALIAS?.trim() || 'corbalan.cristian.b',
-  cvu: process.env.NEXT_PUBLIC_BUSINESS_CVU?.trim() || process.env.NEXT_PUBLIC_TRANSFER_CVU?.trim() || '0000003100071749630487',
-  cbu: process.env.NEXT_PUBLIC_BUSINESS_CBU?.trim() || process.env.NEXT_PUBLIC_TRANSFER_CBU?.trim() || '0000003100071749630487',
-  banco: process.env.NEXT_PUBLIC_BUSINESS_BANCO?.trim() || 'Mercado Pago'
+  titular: process.env.NEXT_PUBLIC_BUSINESS_TITULAR?.trim() ?? '',
+  alias: process.env.NEXT_PUBLIC_BUSINESS_ALIAS?.trim() ?? '',
+  cvu: process.env.NEXT_PUBLIC_BUSINESS_CVU?.trim() ?? '',
+  cbu: process.env.NEXT_PUBLIC_BUSINESS_CBU?.trim() ?? '',
+  banco: process.env.NEXT_PUBLIC_BUSINESS_BANCO?.trim() ?? ''
 }
 
 /** Exige titular, alias y al menos un identificador válido de 22 dígitos. */

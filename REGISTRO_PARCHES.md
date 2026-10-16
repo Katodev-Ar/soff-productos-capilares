@@ -22,3 +22,19 @@ La instalación local **no** actualiza la base de datos ni la web publicada.
 | 1.0.13 | P013 — corrección TypeScript fiscal | Soluciona TS18047 en acumulador de importes fiscales y actualiza versión | Repetir compilación Next.js; sin SQL nuevo |
 
 | 1.0.14 | P014 — compilación sin Supabase | Inicialización inerte, mantenimiento seguro, versión 1.0.14 | Repetir build en Windows; sin SQL nuevo |
+
+| 1.0.15 | P015 — gestión comercial | Cuatro listas, aprobación de perfiles y costos reales privados; preparado como ZIP incremental. | SQL P015, staging, despliegue y validación de seguridad pendientes |
+
+## P016 — v1.0.16 | Precios verificados en carrito y descuentos por canal
+- Endpoint de validación segura del carrito por usuario autenticado o visitante, sin exponer listas ajenas.
+- Sincronización en carga, cambios de artículos, sesión y regreso al sitio; bloqueo de checkout si los precios no pudieron comprobarse.
+- Promociones minoristas previas 5%/10%; sin descuentos automáticos ni cupones minoristas acumulables sobre listas comerciales.
+- Comprobación en API de cupones, servidor de checkout y pantalla; reinicio de comprobante si cambia total.
+- Sin SQL nuevo. Dependencia **P015** y migraciones anteriores. Documento: `LEER_P016_CARRITO_Y_DESCUENTOS.md`.
+
+## P017 — v1.0.17 | Condiciones comerciales administrables
+- Mínimos, dos escalones de descuento, cupones y reglas de envío gratis por minorista/mayorista/revendedor/peluquero; dashboard y API de guardado seguro.
+- Reglas consultadas y verificadas por servidor; bloqueo de checkout si falta SQL o no se cumple mínimo.
+- Tabla y auditoría `soff_channel_terms`/`soff_channel_terms_audit` con RLS, actor y motivo; exige SQL manual en Supabase después de P015.
+- Corregido el mensaje de confirmación del umbral general, y la promesa genérica de envío gratis en fichas públicas.
+- Instalación y reversión mediante gestor de parches; no publica en GitHub ni Vercel.

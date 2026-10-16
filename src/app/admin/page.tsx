@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { postAsSoffAdmin } from '@/lib/adminFetch'
 import { Package, ShoppingBag, Users, DollarSign, ArrowRight, Truck, Save, CheckCircle2 } from 'lucide-react'
 
 export default function AdminDashboardPage() {
@@ -13,6 +14,7 @@ export default function AdminDashboardPage() {
   const [freeShippingAmount, setFreeShippingAmount] = useState(75000)
   const [savingThreshold, setSavingThreshold] = useState(false)
   const [savedNotice, setSavedNotice] = useState(false)
+  const [shippingError, setShippingError] = useState('')
 
   useEffect(() => {
     async function loadStats() {
@@ -48,22 +50,13 @@ export default function AdminDashboardPage() {
   }, [router])
 
   const handleSaveFreeShipping = async () => {
-    setSavingThreshold(true)
+    setSavingThreshold(true); setSavedNotice(false);setShippingError('')
     try {
-      await supabase
-        .from('store_settings')
-        .upsert({
-          key: 'free_shipping_threshold',
-          value: String(freeShippingAmount),
-          updated_at: new Date().toISOString()
-        })
+      await postAsSoffAdmin('/api/admin/commercial/general-shipping',{threshold:freeShippingAmount})
       setSavedNotice(true)
-      setTimeout(() => setSavedNotice(false), 3000)
     } catch (e) {
-      console.error('Error al guardar monto:', e)
-    } finally {
-      setSavingThreshold(false)
-    }
+      setShippingError(e instanceof Error?e.message:'No se pudo guardar el importe.')
+    } finally { setSavingThreshold(false) }
   }
 
   if (loading) {
@@ -126,7 +119,7 @@ export default function AdminDashboardPage() {
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Monto Mínimo para Entrega Gratis</h3>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  Establece a partir de qué monto total de compra el cliente tiene envío gratis bonificado automáticamente.
+                  Umbral general para categorías que elijan «Heredar». Las condiciones por cliente se editan en Gestión comercial.
                 </p>
               </div>
             </div>
@@ -162,6 +155,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
+          {shippingError && <div role="alert" className="mt-4 text-sm rounded-lg border border-red-300 bg-red-50 p-3 text-red-800">{shippingError}</div>}
           {savedNotice && (
             <div className="mt-4 p-3 bg-green-50 border border-green-200 text-green-800 text-xs font-semibold rounded-xl flex items-center gap-2 animate-fadeIn">
               <CheckCircle2 size={16} className="text-green-600 flex-none" />

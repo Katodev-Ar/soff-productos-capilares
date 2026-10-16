@@ -1,6 +1,6 @@
 {
   "name": "sofia-hair-care",
-  "version": "1.0.14",
+  "version": "1.0.17",
   "private": true,
   "scripts": {
     "dev": "next dev",

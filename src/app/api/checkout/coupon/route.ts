@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { couponAllowedFor, channelOf } from '@/lib/commercialPricingPolicy'
+import { loadCommercialTerms } from '@/lib/serverCommercialTerms'
 export const runtime = 'nodejs'
 export async function POST(request: NextRequest) {
   const headers = { 'Cache-Control': 'no-store' }
@@ -16,6 +18,12 @@ export async function POST(request: NextRequest) {
   const code = typeof payload?.code === 'string' ? payload.code.trim().toUpperCase() : ''
   if (!/^[A-Z0-9_-]{1,40}$/.test(code)) return NextResponse.json({error:'Cupón inválido.'},{status:400,headers})
   const db = createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}})
+  const {data: profile,error: profileError} = await db.from('profiles').select('role').eq('id',user.id).single()
+  if(profileError || !profile) return NextResponse.json({error:'No se pudo verificar tu categoría.'},{status:403,headers})
+  let terms
+  try { terms=await loadCommercialTerms(db,channelOf(profile.role)) }
+  catch { return NextResponse.json({error:'No se pudo consultar la política comercial. Migración P017 requerida.'},{status:503,headers}) }
+  if(!couponAllowedFor(profile.role,terms)) return NextResponse.json({error:'Esta lista comercial no admite cupones.'},{status:403,headers})
   const {data,error} = await db.from('coupons')
     .select('discount_percentage,max_uses,current_uses,is_active')
     .eq('code',code).eq('is_active',true).maybeSingle()

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { Plus, Trash2, MapPin } from 'lucide-react'
+import Link from 'next/link'
 
 export default function MiCuentaPage() {
   const router = useRouter()
@@ -127,6 +128,11 @@ export default function MiCuentaPage() {
             </div>
           </div>
           
+          <Link href="/cuenta/comercial" className="mb-6 block rounded-xl border border-[#6d5b51]/30 bg-[#e8e2d8] px-5 py-4 text-[#5e4b40] hover:bg-[#ded5ca]">
+            <strong className="block">Mi cuenta comercial →</strong>
+            <span className="text-sm">Solicitá acceso a precios mayoristas, para revendedores o para peluqueros. Consultá el estado de tu solicitud.</span>
+          </Link>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>

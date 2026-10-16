@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Users, Search } from 'lucide-react'
+import Link from 'next/link'
 
 export default function AdminUsuariosPage() {
   const [users, setUsers] = useState<any[]>([])
@@ -45,6 +46,7 @@ export default function AdminUsuariosPage() {
           </h1>
           <p className="text-gray-500 mt-1">Gestión de clientes y roles</p>
         </div>
+        <Link href="/admin/comercial" className="bg-black text-white rounded-lg px-4 py-2 text-sm">Aprobar cuentas y administrar precios →</Link>
       </div>
 
       <div className="relative mb-6">

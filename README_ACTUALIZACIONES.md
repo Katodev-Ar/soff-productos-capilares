@@ -119,3 +119,12 @@ Parche diferencial para resolver el error TS18047 detectado en la compilación r
 
 ## P014 — Compilación sin Supabase (1.0.14)
 Cuando no están configuradas las dos variables públicas, el sitio muestra mantenimiento y no opera. La inicialización no interrumpe la importación de módulos para el build. Repetir la compilación en Windows. Ver `LEER_P014_COMPILACION_SIN_SUPABASE.md`.
+
+## P015 — Gestión comercial (1.0.15)
+Instalar `SOFF_P015_GESTION_COMERCIAL_v1.0.15.zip` con `ACTUALIZAR_WINDOWS.cmd` **sobre una base íntegra v1.0.14**. Incluye panel de cuatro precios, solicitudes de categorías y costos reales privados. La migración `supabase/migrations/20261016_p015_commercial_management.sql` requiere respaldo, revisión y aplicación manual primero en staging. Ver `LEER_P015_GESTION_COMERCIAL.md`. El parche local no publica Vercel ni actualiza Supabase.
+
+### P016: Verificación del carrito y descuentos (v1.0.16)
+Aplicar **sobre 1.0.15** exclusivamente con `ACTUALIZAR_WINDOWS.cmd` y el ZIP `SOFF_P016_CARRITO_Y_DESCUENTOS_v1.0.16.zip`. Leer `LEER_P016_CARRITO_Y_DESCUENTOS.md` antes de desplegar. No incluye SQL nuevo, pero **P015 y los scripts previos continúan pendientes de comprobación en Supabase**; el instalador solo cambia archivos locales.
+
+## P017 — Condiciones comerciales por canal (v1.0.17)
+Instalar `SOFF_P017_CONDICIONES_COMERCIALES_v1.0.17.zip` sobre v1.0.16 con el gestor Windows. Incluye cuatro canales administrables, compras mínimas, cupones, descuentos por escalones y envío gratis. **Requiere aplicar manualmente** la migración `supabase/migrations/20261016_p017_channel_terms.sql` después de P015, primero en staging. Sin la tabla de P017, el checkout queda bloqueado. Ver `LEER_P017_CONDICIONES_COMERCIALES.md`.

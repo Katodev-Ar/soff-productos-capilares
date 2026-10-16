@@ -119,6 +119,7 @@ export default function RegisterPage() {
             <div role="status" className="space-y-4 text-center">
               <h3 className="text-xl font-semibold">Registro recibido</h3>
               <p className="text-sm text-gray-600">Si corresponde, confirmá tu correo electrónico antes de iniciar sesión. Los datos de tu perfil se guardan al crear la cuenta.</p>
+              <p className="text-sm text-gray-600">Para solicitar precios mayoristas, para reventa o para peluqueros, ingresá luego a Mi cuenta → Cuenta comercial. La categoría inicial es minorista hasta que SOFF apruebe la solicitud.</p>
               <Link href="/login" className="inline-block rounded-full bg-black px-5 py-3 text-sm font-bold text-white">Ir a iniciar sesión</Link>
             </div>
           ) : step === 1 ? (

@@ -54,6 +54,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Conciliación de cobros', href: '/admin/conciliacion', icon: BadgePercent },
     { name: 'Control fiscal y contable', href: '/admin/facturacion', icon: FileText },
     { name: 'Usuarios', href: '/admin/usuarios', icon: Users },
+    { name: 'Gestión comercial', href: '/admin/comercial', icon: BadgePercent },
+    { name: 'Condiciones por canal', href: '/admin/condiciones-comerciales', icon: Settings },
     { name: 'Combos', href: '/admin/combos', icon: Gift },
     { name: 'Banners', href: '/admin/banners', icon: ImageIcon },
     { name: 'Cupones', href: '/admin/cupones', icon: BadgePercent },
