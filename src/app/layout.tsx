@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Soff Productos Capilares",
-  description: "Expertos en el cuidado del cabello",
+  title: "SOFF Productos Capilares | Tienda online en Tucumán",
+  description: "Productos capilares, tinturas, shampoos, máscaras y accesorios de peluquería. Comprá online y consultá disponibilidad en SOFF, San Miguel de Tucumán.",
 };
 
 export default function RootLayout({

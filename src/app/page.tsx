@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, BadgePercent, MapPin, MessageCircle, PackageSearch, Sparkles, Droplets, Droplet, Palette, Beaker, ShieldCheck, ChevronRight } from 'lucide-react'
+import { ArrowRight, BadgePercent, MapPin, MessageCircle, PackageSearch, Sparkles } from 'lucide-react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
@@ -13,45 +13,11 @@ import {
   PRODUCT_SELECT,
   formatPrice,
   getRolePrice,
+  getAvailableStock,
   normalizeRole,
   type Product,
   type UserRole,
 } from '@/lib/catalog'
-
-const fallbackOffers = [
-  {
-    title: 'Rutina hidratación intensa',
-    category: 'MASCARAS',
-    price: 28050,
-    oldPrice: 33000,
-    href: '/productos?q=hidratacion',
-    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    title: 'Nutrición para largos castigados',
-    category: 'SKALA POTE',
-    price: 43095,
-    oldPrice: 50700,
-    href: '/productos?categoria=SKALA%20POTE',
-    image: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    title: 'Color radiante y brillo',
-    category: 'TINTURAS FIDELITE',
-    price: 30090,
-    oldPrice: 35400,
-    href: '/productos?q=tintura',
-    image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=300&q=80',
-  },
-  {
-    title: 'Shampoo de uso diario',
-    category: 'SHAMPOO',
-    price: 8250,
-    oldPrice: 11000,
-    href: '/productos?categoria=SHAMPOO',
-    image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=300&q=80',
-  },
-]
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
@@ -60,122 +26,125 @@ export default function Home() {
   const [combos, setCombos] = useState<any[]>([])
   const [userRole, setUserRole] = useState<UserRole>('minorista')
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'novedades' | 'ofertas'>('novedades')
+  const [activeTab, setActiveTab] = useState<'novedades' | 'disponibles'>('novedades')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const loadHome = useCallback(async () => {
-    try {
-      setErrorMessage(null)
-      setLoading(true)
+  useEffect(() => {
+    let isMounted = true
 
-      const userPromise = (async () => {
-        try {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (!user) return 'minorista' as UserRole
-          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-          return normalizeRole(profile?.role)
-        } catch {
-          return 'minorista' as UserRole
-        }
-      })()
+    async function loadHome() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-      const catalogPromise = supabase
+      let role: UserRole = 'minorista'
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+        role = normalizeRole(profile?.role)
+      }
+
+      const { data, error } = await supabase
         .from('soff_catalog_public')
         .select(PRODUCT_SELECT)
         .order('created_at', { ascending: false })
         .limit(150)
         .returns<Product[]>()
 
-      const catDataPromise = supabase
+      // Fetch one image per category from the entire catalog to avoid missing images
+      const { data: catData } = await supabase
         .from('soff_catalog_public')
         .select('category, image_url')
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
         .limit(100)
         .returns<{ category: string | null; image_url: string | null }[]>()
-
-      const bannerPromise = supabase
+      
+      // Fetch banners
+      const { data: bannerData } = await supabase
         .from('banners')
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true })
 
-      const comboPromise = supabase
-        .from('combos')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
+      // Productos de combos por la vista segura, sin JOIN a la tabla privada products.
+      const { data: comboData } = await supabase.from('combos')
+        .select('*').eq('is_active', true).order('created_at', { ascending: false })
+      const comboIds = (comboData ?? []).map(c => c.id)
+      const { data: relations } = comboIds.length
+        ? await supabase.from('combo_products').select('combo_id,product_id').in('combo_id', comboIds)
+        : { data: [] as { combo_id: string; product_id: string }[] }
+      const ids = [...new Set((relations ?? []).map(r => r.product_id))]
+      const { data: comboProducts } = ids.length
+        ? await supabase.from('soff_catalog_public').select(PRODUCT_SELECT).in('id', ids).returns<Product[]>()
+        : { data: [] as Product[] }
+      const comboProductMap = new Map((comboProducts ?? []).map(p => [p.id, p]))
+      const safeCombos = (comboData ?? []).map(combo => ({
+        ...combo,
+        combo_products: (relations ?? [])
+          .filter(r => r.combo_id === combo.id)
+          .map(r => ({ product: comboProductMap.get(r.product_id) }))
+          .filter(cp => Boolean(cp.product)),
+      }))
 
-      const [role, catalogRes, catRes, bannerRes, comboRes] = await Promise.all([
-        userPromise,
-        catalogPromise,
-        catDataPromise,
-        bannerPromise,
-        comboPromise,
-      ])
-
-      if (catalogRes.error) {
-        throw catalogRes.error
-      }
-
-      const comboData = comboRes.data ?? []
-      const comboIds = comboData.map(c => c.id)
-      let safeCombos: any[] = []
-
-      if (comboIds.length > 0) {
-        const { data: relations } = await supabase
-          .from('combo_products')
-          .select('combo_id,product_id')
-          .in('combo_id', comboIds)
-
-        const ids = [...new Set((relations ?? []).map(r => r.product_id))]
-        const { data: comboProducts } = ids.length
-          ? await supabase.from('soff_catalog_public').select(PRODUCT_SELECT).in('id', ids).returns<Product[]>()
-          : { data: [] as Product[] }
-
-        const comboProductMap = new Map((comboProducts ?? []).map(p => [p.id, p]))
-        safeCombos = comboData.map(combo => ({
-          ...combo,
-          combo_products: (relations ?? [])
-            .filter(r => r.combo_id === combo.id)
-            .map(r => ({ product: comboProductMap.get(r.product_id) }))
-            .filter(cp => Boolean(cp.product)),
-        }))
-      }
-
-      setProducts(catalogRes.data || [])
-      setBanners(bannerRes.data || [])
-      setCombos(safeCombos)
-
-      const catImgMap: Record<string, string> = {}
-      if (catRes.data) {
-        for (const p of catRes.data) {
-          if (p.category && p.image_url && !catImgMap[p.category]) {
-            catImgMap[p.category.toUpperCase()] = p.image_url
+      if (isMounted) {
+        if (error) {
+          console.error('Error fetching home data:', error)
+          setErrorMessage('Error al cargar la página.')
+        } else {
+          setProducts(data || [])
+          setBanners(bannerData || [])
+          setCombos(safeCombos)
+          
+          const catImgMap: Record<string, string> = {}
+          if (catData) {
+            for (const p of catData) {
+              if (p.category && p.image_url && !catImgMap[p.category.toLocaleUpperCase('es-AR')]) {
+                catImgMap[p.category.toLocaleUpperCase('es-AR')] = p.image_url
+              }
+            }
           }
+          setCategoryImages(catImgMap)
         }
+        setUserRole(role)
+        setLoading(false)
       }
-      setCategoryImages(catImgMap)
-      setUserRole(role)
-    } catch (err: any) {
-      console.error('Error fetching home data:', err)
-      setErrorMessage('No pudimos cargar algunos productos del catálogo. Podés reintentar ahora.')
-    } finally {
-      setLoading(false)
+    }
+
+    void loadHome()
+
+    return () => {
+      isMounted = false
     }
   }, [])
 
-  useEffect(() => {
-    void loadHome()
-  }, [loadHome])
-
   const visibleProducts = useMemo(() => {
-    if (activeTab === 'ofertas') {
-      return products.filter((product) => getRolePrice(product, userRole) > 0).slice(0, 6)
+    if (activeTab === 'disponibles') {
+      return products.filter((product) =>
+        getAvailableStock(product) > 0 && getRolePrice(product, userRole) > 0
+      ).slice(0, 6)
     }
 
     return products.slice(0, 6)
   }, [activeTab, products, userRole])
+
+  // Mantener navegables las categorías aunque no tengan imágenes cargadas.
+  // Preservar el nombre tal como viene del catálogo: el filtro utiliza coincidencia exacta.
+  const navigationCategories = useMemo(() => {
+    const byName = new Map<string, { name: string; image: string | null }>()
+    for (const product of products) {
+      const name = product.category?.trim()
+      if (!name) continue
+      const key = name.toLocaleUpperCase('es-AR')
+      const image = categoryImages[key] || product.image_url || null
+      const existing = byName.get(key)
+      if (!existing || (!existing.image && image)) byName.set(key, { name, image })
+    }
+    const priority = new Map<string, number>(PRODUCT_CATEGORIES.map((name, i): [string, number] => [name, i]))
+    return Array.from(byName.values()).sort((a, b) =>
+      (priority.get(a.name.toLocaleUpperCase('es-AR')) ?? 1000) -
+      (priority.get(b.name.toLocaleUpperCase('es-AR')) ?? 1000) || a.name.localeCompare(b.name, 'es')
+    )
+  }, [products, categoryImages])
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-gray-900 antialiased">
@@ -228,27 +197,34 @@ export default function Home() {
           </section>
         )}
 
-        {/* Dynamic Categories Scroll Row */}
-        <section className="mb-12 border-b border-gray-100 pb-8">
-          <AutoCarousel speed={5000}>
-            {Object.entries(categoryImages).map(([catName, imgUrl]) => {
-              return (
+        {/* Acceso a categorías, con imagen opcional y sin inventar categorías vacías. */}
+        {(navigationCategories.length > 0 || loading) && (
+          <section className="mb-12 border-b border-gray-100 pb-8" aria-label="Explorar categorías">
+            <h2 className="mb-4 text-lg font-bold text-gray-900">Explorá por categoría</h2>
+            <AutoCarousel speed={5000} label="Categorías de productos">
+              {loading ? Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="h-24 w-20 shrink-0 animate-pulse rounded-lg bg-gray-100 sm:w-24" />
+              )) : navigationCategories.map(({ name, image }) => (
                 <Link
-                  key={catName}
-                  href={`/productos?categoria=${encodeURIComponent(catName)}`}
-                  className="snap-start shrink-0 flex flex-col items-center gap-2 group w-20 sm:w-24"
+                  key={name}
+                  href={`/productos?categoria=${encodeURIComponent(name)}`}
+                  className="group flex w-20 shrink-0 snap-start flex-col items-center gap-2 sm:w-24"
                 >
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-full flex items-center justify-center overflow-hidden border border-gray-100 group-hover:border-brand-primary group-hover:shadow-md transition-all p-2">
-                    <img src={imgUrl} alt={catName} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300" />
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-gray-50 p-2 transition-all group-hover:border-brand-primary group-hover:shadow-md sm:h-20 sm:w-20">
+                    {image ? (
+                      <img loading="lazy" src={image} alt="" className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-110" />
+                    ) : (
+                      <PackageSearch size={26} aria-hidden="true" className="text-gray-400" />
+                    )}
                   </div>
-                  <span className="text-[11px] sm:text-xs font-semibold text-gray-700 text-center leading-tight group-hover:text-brand-primary capitalize">
-                    {catName.toLowerCase()}
+                  <span className="text-center text-[11px] font-semibold capitalize leading-tight text-gray-700 group-hover:text-brand-primary sm:text-xs">
+                    {name.toLocaleLowerCase('es-AR')}
                   </span>
                 </Link>
-              )
-            })}
-          </AutoCarousel>
-        </section>
+              ))}
+            </AutoCarousel>
+          </section>
+        )}
 
         {/* Brands Section */}
         <section className="mb-16">
@@ -283,24 +259,26 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Fravega-style Special Offers Section */}
+        {/* Productos reales del catálogo: no se anuncian descuentos no verificados. */}
         <section className="mb-16">
-          <div className="bg-[#f2e6ff] rounded-[32px] p-6 md:p-10 w-full overflow-hidden">
+          <div className="w-full overflow-hidden rounded-[24px] bg-[#fff2f6] p-5 sm:p-6 md:rounded-[32px] md:p-10">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-3xl font-bold text-[#2d1b4e]">Ofertas Únicas</h2>
+                <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">Descubrí productos SOFF</h2>
+                <p className="mt-2 text-sm text-gray-600">Novedades y productos que podés comprar ahora.</p>
               </div>
               <div className="flex w-fit rounded-full bg-white/50 p-1">
                 {[
                   { id: 'novedades', label: 'Novedades' },
-                  { id: 'ofertas', label: 'Disponibles' },
+                  { id: 'disponibles', label: 'En stock' },
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id as 'novedades' | 'ofertas')}
-                    className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${
-                      activeTab === tab.id ? 'bg-[#4a2e85] text-white shadow-sm' : 'text-[#4a2e85] hover:bg-white/50'
+                    onClick={() => setActiveTab(tab.id as 'novedades' | 'disponibles')}
+                    aria-pressed={activeTab === tab.id}
+                    className={`rounded-full px-4 py-2 text-sm font-bold transition-colors sm:px-5 ${
+                      activeTab === tab.id ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-700 hover:bg-white/70'
                     }`}
                   >
                     {tab.label}
@@ -309,20 +287,9 @@ export default function Home() {
               </div>
             </div>
 
-            {errorMessage && (
-              <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex flex-wrap items-center justify-between gap-3">
-                <span>{errorMessage}</span>
-                <button
-                  type="button"
-                  onClick={() => void loadHome()}
-                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
-                >
-                  Reintentar
-                </button>
-              </div>
-            )}
+            {errorMessage && <div className="mb-6 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">{errorMessage}</div>}
 
-            <AutoCarousel speed={3500}>
+            <AutoCarousel speed={3500} label="Productos destacados">
               {loading ? (
                 Array.from({ length: 6 }).map((_, index) => (
                   <div key={index} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
@@ -336,10 +303,11 @@ export default function Home() {
                   </div>
                 ))
               ) : (
-                <div className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/50 bg-white/30 px-6 py-16 text-center">
-                  <PackageSearch size={36} className="mb-3 text-[#4a2e85]/50" />
-                  <h3 className="text-lg font-bold text-[#2d1b4e]">Todavía no hay productos cargados</h3>
-                  <p className="mt-2 max-w-md text-sm text-[#4a2e85]/70">Cuando cargues productos desde el panel admin, van a aparecer automáticamente acá.</p>
+                <div className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white/70 px-6 py-16 text-center">
+                  <PackageSearch size={36} className="mb-3 text-gray-400" />
+                  <h3 className="text-lg font-bold text-gray-900">No hay productos para mostrar</h3>
+                  <p className="mt-2 max-w-md text-sm text-gray-600">Probá con la pestaña Novedades o visitá el catálogo completo.</p>
+                  <Link href="/productos" className="mt-4 rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white hover:bg-black">Ver catálogo</Link>
                 </div>
               )}
             </AutoCarousel>
@@ -374,7 +342,7 @@ export default function Home() {
                   </Link>
                 </div>
 
-                <AutoCarousel speed={4000}>
+                <AutoCarousel speed={4000} label={catRow.title}>
                   {loading
                     ? Array.from({ length: 4 }).map((_, index) => (
                         <div key={index} className="w-[200px] sm:w-[240px] shrink-0 snap-start h-72 animate-pulse rounded-lg bg-gray-100" />
@@ -414,7 +382,14 @@ export default function Home() {
               const discountedPrice = originalPrice * (1 - combo.discount_percentage / 100)
 
               return (
-                <Link key={combo.id} href={`/combo/${combo.id}`} className="flex items-center justify-between rounded-lg bg-[#f8f8f8] p-4 transition hover:shadow-md">
+                <a
+                  key={combo.id}
+                  href={`https://wa.me/5493816253929?text=${encodeURIComponent(`Hola Soff, quiero consultar la disponibilidad y el precio final del combo "${combo.name}".`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between rounded-lg bg-[#f8f8f8] p-4 transition hover:shadow-md"
+                  aria-label={`Consultar el combo ${combo.name} por WhatsApp`}
+                >
                   <div className="flex min-w-0 items-center gap-4">
                     <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded bg-white p-1">
                       {combo.image_url ? (
@@ -432,12 +407,13 @@ export default function Home() {
                         <span className="text-sm font-bold text-[#c1272d]">{formatPrice(discountedPrice)}</span>
                         <span className="text-[11px] text-gray-400 line-through">{formatPrice(originalPrice)}</span>
                       </div>
+                      <p className="mt-1 text-[11px] text-gray-600">Precio estimado. Consultar disponibilidad y precio final por WhatsApp.</p>
                     </div>
                   </div>
                   <span className="ml-3 flex h-8 w-8 flex-none items-center justify-center rounded-full border border-gray-300 text-gray-500 transition-colors group-hover:bg-white">
                     <ArrowRight size={16} />
                   </span>
-                </Link>
+                </a>
               )
             })}
             
@@ -524,22 +500,4 @@ export default function Home() {
       <Footer />
     </div>
   )
-}
-
-function ShieldCheckIcon() {
-  return <span className="flex h-4 w-4 items-center justify-center rounded-full bg-black text-[10px] font-bold text-white">✓</span>
-}
-
-function OfferImage({ src, alt }: { src: string; alt: string }) {
-  const [imageFailed, setImageFailed] = useState(false)
-
-  if (imageFailed) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-gray-400">
-        <PackageSearch size={20} strokeWidth={1.5} />
-      </div>
-    )
-  }
-
-  return <img src={src} className="h-full w-full object-cover" alt={alt} onError={() => setImageFailed(true)} />
 }
