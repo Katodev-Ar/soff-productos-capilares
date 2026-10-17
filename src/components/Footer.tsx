@@ -1,21 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
-import { Check, Mail, MapPin } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 
 export default function Footer() {
-  const [email, setEmail] = useState('')
-  const [subscribed, setSubscribed] = useState(false)
-
-  const handleSubscribe = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!email.trim()) return
-
-    setSubscribed(true)
-    setEmail('')
-  }
-
   return (
     <footer className="mt-auto border-t border-gray-800 bg-brand-secondary pb-8 pt-16 text-white">
       <div className="mx-auto mb-12 grid max-w-7xl grid-cols-1 gap-12 px-4 sm:px-6 md:grid-cols-2 md:gap-8 lg:grid-cols-4 lg:px-8">
@@ -61,31 +49,18 @@ export default function Footer() {
         </div>
 
         <div className="flex flex-col">
-          <h5 className="mb-6 border-b border-gray-700 pb-2 text-sm font-bold uppercase tracking-wider text-white">Suscribite</h5>
-          <p className="mb-4 text-sm leading-6 text-gray-400">Recibí novedades y descuentos exclusivos.</p>
-          <form className="mt-2 flex flex-col space-y-2" onSubmit={handleSubscribe}>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value)
-                  setSubscribed(false)
-                }}
-                placeholder="Tu correo electrónico"
-                className="w-full rounded border border-gray-700 bg-black px-4 py-3 pl-10 text-sm text-white placeholder-gray-500 outline-none focus:border-brand-primary"
-              />
-            </div>
-            <button type="submit" className="rounded bg-brand-primary px-4 py-3 text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-pink-300">
-              Suscribirme
-            </button>
-          </form>
-          {subscribed && (
-            <p className="mt-3 flex items-center gap-2 text-sm text-brand-primary">
-              <Check size={16} /> Gracias, te sumamos a la lista local.
-            </p>
-          )}
+          <h5 className="mb-6 border-b border-gray-700 pb-2 text-sm font-bold uppercase tracking-wider text-white">Novedades</h5>
+          <p className="mb-4 text-sm leading-6 text-gray-400">
+            Enterate de nuevos productos y promociones en nuestro Instagram.
+          </p>
+          <a
+            href="https://www.instagram.com/soffproductoscapilares"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center rounded bg-brand-primary px-4 py-3 text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-pink-300"
+          >
+            Seguir en Instagram
+          </a>
         </div>
       </div>
 

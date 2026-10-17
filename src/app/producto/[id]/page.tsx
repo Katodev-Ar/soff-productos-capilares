@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronUp, PackageSearch, ShieldCheck, ShoppingBag, Star, Truck, Heart } from 'lucide-react'
+import { ChevronDown, ChevronUp, PackageSearch, ShieldCheck, ShoppingBag, Truck, Heart } from 'lucide-react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
@@ -164,12 +164,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-primary">{product.category || 'Producto'}</p>
             <h1 className="mb-2 text-3xl font-bold text-gray-900 md:text-4xl">{product.name}</h1>
 
-            <div className="mb-6 flex items-center space-x-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star key={star} size={14} className="fill-brand-primary text-brand-primary" />
-              ))}
-              <span className="ml-2 text-xs text-gray-500">Calidad profesional</span>
-            </div>
+            <p className="mb-6 text-xs font-medium uppercase tracking-wider text-gray-500">
+              Cuidado capilar profesional
+            </p>
 
             <p className="mb-2 text-3xl font-bold text-gray-900">{hasPrice ? formatPrice(price) : 'Consultar precio'}</p>
             <p className={`mb-6 text-sm font-semibold ${canAddToCart ? 'text-green-700' : 'text-[#c1272d]'}`}>

@@ -10,7 +10,7 @@ import { Package, ShoppingBag, Users, DollarSign, ArrowRight, Truck, Save, Check
 export default function AdminDashboardPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalProducts: 0, totalUsers: 0, totalRevenue: 0 })
+  const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalProducts: 0, totalUsers: 0 })
   const [freeShippingAmount, setFreeShippingAmount] = useState(75000)
   const [savingThreshold, setSavingThreshold] = useState(false)
   const [savedNotice, setSavedNotice] = useState(false)
@@ -23,14 +23,12 @@ export default function AdminDashboardPage() {
 
       // Fetch counts and settings
       const [ordersRes, pendingRes, productsRes, usersRes, settingsRes] = await Promise.all([
-        supabase.from('orders').select('id, total', { count: 'exact' }),
-        supabase.from('orders').select('id', { count: 'exact' }).eq('status', 'pendiente'),
-        supabase.from('products').select('id', { count: 'exact' }),
-        supabase.from('profiles').select('id', { count: 'exact' }),
+        supabase.from('orders').select('id', { count: 'exact', head: true }),
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'pendiente'),
+        supabase.from('products').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('store_settings').select('value').eq('key', 'free_shipping_threshold').single()
       ])
-
-      const revenue = ordersRes.data?.reduce((sum: number, o: any) => sum + (o.total || 0), 0) || 0
 
       if (settingsRes.data?.value) {
         const val = parseInt(settingsRes.data.value, 10)
@@ -42,7 +40,6 @@ export default function AdminDashboardPage() {
         pendingOrders: pendingRes.count || 0,
         totalProducts: productsRes.count || 0,
         totalUsers: usersRes.count || 0,
-        totalRevenue: revenue,
       })
       setLoading(false)
     }
@@ -71,7 +68,7 @@ export default function AdminDashboardPage() {
     { label: 'Pedidos Totales', value: stats.totalOrders, icon: Package, color: 'bg-blue-500', href: '/admin/pedidos' },
     { label: 'Pedidos Pendientes', value: stats.pendingOrders, icon: Package, color: 'bg-yellow-500', href: '/admin/pedidos' },
     { label: 'Productos', value: stats.totalProducts, icon: ShoppingBag, color: 'bg-purple-500', href: '/admin/productos' },
-    { label: 'Usuarios', value: stats.totalUsers, icon: Users, color: 'bg-green-500', href: '#' },
+    { label: 'Usuarios', value: stats.totalUsers, icon: Users, color: 'bg-green-500', href: '/admin/usuarios' },
   ]
 
   return (
@@ -96,15 +93,18 @@ export default function AdminDashboardPage() {
           ))}
         </div>
 
-        {/* Revenue Card */}
+        {/* No presentar pedidos pendientes o cancelados como ingresos cobrados. */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-start gap-3 mb-2">
             <div className="bg-black p-3 rounded-xl text-white">
               <DollarSign className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Ingresos Totales</p>
-              <p className="text-3xl font-bold text-gray-900">${stats.totalRevenue.toLocaleString('es-AR')}</p>
+              <p className="text-sm font-semibold text-gray-800">Cobros confirmados</p>
+              <p className="mt-1 text-sm text-gray-500">No se calcula un total a partir de pedidos pendientes, cancelados o páginas parciales de resultados.</p>
+              <Link href="/admin/conciliacion" className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[#002f5b] underline">
+                Consultar conciliación de cobros <ArrowRight size={15} />
+              </Link>
             </div>
           </div>
         </div>

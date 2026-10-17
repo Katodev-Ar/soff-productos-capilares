@@ -54,8 +54,9 @@ export default function CheckoutPage() {
   const { 
     items,
     customerChannel, commercialTerms, minimumMet, remainingMinimum, pricingStatus, pricingError, refreshPrices,
-    cartSubtotal, 
-    cartTotal, 
+    cartSubtotal,
+    cartTotal,
+    clearCart, 
     volumeDiscountPercentage,
     couponCode, setCouponCode,
     couponDiscountPercentage, setCouponDiscountPercentage,
@@ -473,7 +474,10 @@ export default function CheckoutPage() {
       if (!res.ok) {
         throw new Error(data.error || 'Error al procesar')
       }
-      
+      if (data?.success !== true || typeof data?.orderId !== 'string' || !data.orderId) {
+        throw new Error('El servidor no confirmó el pedido. No se modificó el carrito.')
+      }
+
       // Vincular dirección a la cuenta para futuros pedidos
       if (formData.address) {
         const addressObj = {
@@ -491,7 +495,9 @@ export default function CheckoutPage() {
         }).eq('id', userData.user.id)
       }
 
-      router.push('/checkout/exito')
+      // Vaciar únicamente después de recibir el identificador confirmado del servidor.
+      clearCart()
+      router.push(`/checkout/exito?pedido=${encodeURIComponent(data.orderId)}`)
     } catch (error: any) {
       console.error('Error al subir comprobante:', error)
       setPaymentNotice(error instanceof Error ? error.message : 'No se pudo procesar el pedido.')
