@@ -11,9 +11,9 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   
-  --color-brand-primary: #e88baf; /* Rosa del logo */
+  --color-brand-primary: #29c4e8; /* Cian de SOFF: no es el aro de Instagram */
   --color-brand-secondary: #000000; /* Negro del fondo del logo */
-  --color-brand-accent: #fce7f3; /* Rosa ultra claro para fondos */
+  --color-brand-accent: #eafaff; /* Cian claro para acentos */
   --color-brand-light: #ffffff;
 }
 
@@ -50,4 +50,56 @@ body {
   animation: marquee 25s linear infinite;
   display: inline-block;
   white-space: nowrap;
+}
+
+/* SOFF Premium Beauty P019 / Grafito — solo estilos de presentación. */
+.soff-premium-beauty {
+  --soff-ink: #ecf5fa;
+  --soff-graphite: #0b131a;
+  --soff-surface: #172630;
+  --soff-cyan: #2ac5e8;
+  --soff-pearl: #eaf1f5;
+  background: var(--soff-graphite);
+  color: var(--soff-ink);
+}
+.soff-premium-beauty .premium-display {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+.soff-premium-beauty .premium-eyebrow {
+  color: #77e2f9;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.23em;
+  line-height: 1.6;
+}
+.soff-premium-beauty .premium-banner,
+.soff-premium-beauty .premium-hero {
+  box-shadow: 0 18px 48px rgba(0, 5, 9, .36);
+}
+.soff-premium-beauty .premium-banner img { display: block; width: 100%; }
+/* Clase conservada por compatibilidad con las pruebas y markup P019. */
+.soff-premium-beauty .premium-button-gold {
+  background: #2ac5e8;
+  color: #081820;
+  box-shadow: 0 7px 24px rgba(0, 189, 230, .14);
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+.soff-premium-beauty .premium-button-gold:hover {
+  background: #86e5f9;
+  transform: translateY(-1px);
+}
+.soff-premium-beauty .premium-editorial {
+  background-image:
+    radial-gradient(circle at 95% 10%, rgba(42, 197, 232, .18), transparent 32%),
+    radial-gradient(circle at 6% 96%, rgba(0, 104, 151, .16), transparent 50%);
+}
+.soff-premium-beauty :where(a, button):focus-visible {
+  outline: 2px solid #64dcf8;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; }
+  .soff-premium-beauty .premium-button-gold { transition: none; }
 }

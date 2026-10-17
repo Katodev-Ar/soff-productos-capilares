@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, BadgePercent, MapPin, MessageCircle, PackageSearch, Sparkles } from 'lucide-react'
+import { ArrowRight, BadgePercent, MapPin, MessageCircle, PackageSearch, Sparkles, ShoppingBag } from 'lucide-react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
@@ -147,12 +147,28 @@ export default function Home() {
   }, [products, categoryImages])
 
   return (
-    <div className="flex min-h-screen flex-col bg-white text-gray-900 antialiased">
+    <div className="soff-premium-beauty flex min-h-screen flex-col bg-[#0b131a] text-[#ecf5fa] antialiased">
       <Header />
 
       <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-[#2c414e] pb-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#9db9c9] sm:text-xs">
+          <span>SOFF / Premium Beauty</span>
+          <span>Tu ritual de cuidado empieza acá</span>
+        </div>
+        {banners.length > 0 && (
+          <section className="premium-editorial mb-6 flex flex-col items-start justify-between gap-5 rounded-[26px] bg-[#111d27] px-7 py-8 text-white sm:flex-row sm:items-center sm:px-10" aria-label="Presentación SOFF Premium Beauty">
+            <div>
+              <p className="premium-eyebrow !text-[#74def8]">EL ESTILO SOFF</p>
+              <h1 className="premium-display mt-2 text-3xl sm:text-4xl">Tu pelo. Tu estilo. Tu ritual.</h1>
+            </div>
+            <Link href="/productos" className="premium-button-gold inline-flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold uppercase tracking-widest">
+              Ver catálogo <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </section>
+        )}
+
         {banners.length > 0 ? (
-          <section className="relative mb-10 overflow-hidden rounded-lg">
+          <section className="premium-banner relative mb-8 overflow-hidden rounded-[26px]" aria-label="Novedades de SOFF">
             <AutoCarousel speed={5000}>
               {banners.map((banner) => (
                 <div key={banner.id} className="w-full shrink-0 snap-start">
@@ -168,28 +184,28 @@ export default function Home() {
             </AutoCarousel>
           </section>
         ) : (
-          <section className="relative mb-10 min-h-[360px] overflow-hidden rounded-lg bg-[#eef3f1] md:min-h-[470px]">
+          <section className="premium-hero relative mb-8 min-h-[380px] overflow-hidden rounded-[26px] bg-[#111d27] md:min-h-[510px]">
             <img
               src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1920&q=80"
               alt="Cabello saludable con rutina profesional"
-              className="absolute inset-0 h-full w-full object-cover object-center"
+              className="absolute inset-0 h-full w-full object-cover object-center opacity-80"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/76 to-white/8" />
-            <div className="relative z-10 flex min-h-[360px] max-w-xl flex-col justify-center px-6 py-10 md:min-h-[470px] md:px-12">
-              <p className="mb-4 w-fit border-b-2 border-[#002f5b] pb-2 text-xs font-bold uppercase tracking-[0.24em] text-[#002f5b]">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#09131b]/95 via-[#10202b]/80 to-[#09131b]/5" />
+            <div className="relative z-10 flex min-h-[380px] max-w-xl flex-col justify-center px-7 py-14 md:min-h-[510px] md:px-16">
+              <p className="mb-5 w-fit border-b border-[#25c1e7] pb-3 text-xs font-semibold uppercase tracking-[0.27em] text-[#77e3ff]">
                 Soff Productos Capilares
               </p>
-              <h1 className="text-4xl font-extrabold uppercase leading-tight tracking-tight text-[#002f5b] sm:text-5xl">
-                Nueva rutina para tu pelo
+              <h1 className="premium-display text-5xl font-medium leading-[1.04] tracking-tight text-white sm:text-6xl">
+                Una nueva forma de cuidar tu pelo
               </h1>
-              <p className="mt-5 max-w-md text-base leading-7 text-gray-700">
+              <p className="mt-6 max-w-md text-base leading-7 text-[#cfdee7]">
                 Productos profesionales para hidratar, reparar y sostener el brillo todos los días.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href="/productos" className="inline-flex items-center justify-center rounded bg-[#002f5b] px-6 py-3 text-sm font-bold uppercase tracking-[0.14em] text-white hover:bg-black">
+                <Link href="/productos" className="premium-button-gold inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-xs font-bold uppercase tracking-[0.14em]">
                   Comprar ahora <ArrowRight size={16} className="ml-2" />
                 </Link>
-                <Link href="/#rutinas" className="inline-flex items-center justify-center rounded border border-[#002f5b] px-6 py-3 text-sm font-bold uppercase tracking-[0.14em] text-[#002f5b] hover:border-brand-primary hover:text-brand-primary">
+                <Link href="/#rutinas" className="inline-flex items-center justify-center rounded-full border border-[#71cde6] px-7 py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition hover:bg-[#3c6172]/30">
                   Ver rutinas
                 </Link>
               </div>
@@ -197,27 +213,43 @@ export default function Home() {
           </section>
         )}
 
+        <section aria-label="Beneficios de SOFF" className="premium-services mb-12 grid grid-cols-1 gap-2 overflow-hidden rounded-2xl border border-[#2e414d] bg-[#17242e] p-4 sm:grid-cols-3 sm:gap-4 sm:p-5">
+          <div className="flex items-center gap-3 px-2 py-2">
+            <Sparkles aria-hidden="true" size={22} className="shrink-0 text-[#54d4f4]" />
+            <div><p className="text-sm font-semibold">Tu rutina ideal</p><p className="text-xs text-[#b1c2cb]">Cuidado y belleza capilar</p></div>
+          </div>
+          <div className="flex items-center gap-3 px-2 py-2">
+            <ShoppingBag aria-hidden="true" size={22} className="shrink-0 text-[#54d4f4]" />
+            <div><p className="text-sm font-semibold">Comprá online</p><p className="text-xs text-[#b1c2cb]">Explorá nuestro catálogo</p></div>
+          </div>
+          <div className="flex items-center gap-3 px-2 py-2">
+            <MapPin aria-hidden="true" size={22} className="shrink-0 text-[#54d4f4]" />
+            <div><p className="text-sm font-semibold">Estamos en Tucumán</p><p className="text-xs text-[#b1c2cb]">Retiro en nuestro local</p></div>
+          </div>
+        </section>
+
         {/* Acceso a categorías, con imagen opcional y sin inventar categorías vacías. */}
         {(navigationCategories.length > 0 || loading) && (
-          <section className="mb-12 border-b border-gray-100 pb-8" aria-label="Explorar categorías">
-            <h2 className="mb-4 text-lg font-bold text-gray-900">Explorá por categoría</h2>
+          <section className="mb-14 border-b border-[#2e414d] pb-10" aria-label="Explorar categorías">
+            <p className="premium-eyebrow mb-2">EL UNIVERSO SOFF</p>
+            <h2 className="premium-display mb-5 text-3xl sm:text-4xl">Encontrá lo que tu pelo necesita</h2>
             <AutoCarousel speed={5000} label="Categorías de productos">
               {loading ? Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="h-24 w-20 shrink-0 animate-pulse rounded-lg bg-gray-100 sm:w-24" />
+                <div key={index} className="h-24 w-20 shrink-0 animate-pulse rounded-lg bg-[#253642] sm:w-24" />
               )) : navigationCategories.map(({ name, image }) => (
                 <Link
                   key={name}
                   href={`/productos?categoria=${encodeURIComponent(name)}`}
                   className="group flex w-20 shrink-0 snap-start flex-col items-center gap-2 sm:w-24"
                 >
-                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-gray-50 p-2 transition-all group-hover:border-brand-primary group-hover:shadow-md sm:h-20 sm:w-20">
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[#395563] bg-[#1c2d38] p-2 transition-all group-hover:border-[#25c1e7] group-hover:shadow-md sm:h-20 sm:w-20">
                     {image ? (
                       <img loading="lazy" src={image} alt="" className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-110" />
                     ) : (
-                      <PackageSearch size={26} aria-hidden="true" className="text-gray-400" />
+                      <PackageSearch size={26} aria-hidden="true" className="text-[#8fa8b5]" />
                     )}
                   </div>
-                  <span className="text-center text-[11px] font-semibold capitalize leading-tight text-gray-700 group-hover:text-brand-primary sm:text-xs">
+                  <span className="text-center text-[11px] font-semibold capitalize leading-tight text-[#d1e2e9] group-hover:text-[#5cdbf8] sm:text-xs">
                     {name.toLocaleLowerCase('es-AR')}
                   </span>
                 </Link>
@@ -226,11 +258,25 @@ export default function Home() {
           </section>
         )}
 
+        <section className="premium-editorial mb-16 overflow-hidden rounded-[26px] bg-[#111d27] px-7 py-12 text-white sm:px-10 md:px-14 md:py-16" aria-label="Belleza SOFF">
+          <div className="flex flex-col items-start justify-between gap-9 md:flex-row md:items-end">
+            <div className="max-w-2xl">
+              <p className="premium-eyebrow !text-[#74def8]">EL ARTE DE CUIDARTE</p>
+              <h2 className="premium-display mt-4 text-4xl leading-tight sm:text-5xl md:text-6xl">Belleza que se siente.<br /><span className="text-[#73dff9]">Resultados que se ven.</span></h2>
+              <p className="mt-5 max-w-xl text-sm leading-7 text-[#b8cbd4] sm:text-base">Desde tu rutina de todos los días hasta el cuidado profesional. Encontrá productos y marcas para cada momento de tu pelo.</p>
+            </div>
+            <Link href="/productos" className="premium-button-gold inline-flex shrink-0 items-center gap-3 rounded-full px-7 py-3.5 text-xs font-bold uppercase tracking-[0.13em]">
+              Explorar catálogo <ArrowRight size={17} aria-hidden="true" />
+            </Link>
+          </div>
+        </section>
+
         {/* Brands Section */}
         <section className="mb-16">
-          <div className="mb-8 text-center">
-            <h2 className="text-2xl font-bold text-[#002f5b]">Nuestras marcas principales</h2>
-            <p className="text-sm text-gray-500 mt-2">Encontrá los mejores productos de tus marcas favoritas</p>
+          <div className="mb-9 text-center">
+            <p className="premium-eyebrow mb-2">MARCAS QUE NOS ENCANTAN</p>
+            <h2 className="premium-display text-3xl sm:text-4xl">Tus marcas favoritas, en un solo lugar</h2>
+            <p className="mt-2 text-sm text-[#a4b9c6]">Elegí entre las marcas de nuestro catálogo</p>
           </div>
           <div className="flex flex-wrap justify-center gap-6 md:gap-8">
             {[
@@ -246,12 +292,12 @@ export default function Home() {
               <Link
                 key={brand.name}
                 href={`/productos?q=${encodeURIComponent(brand.q)}`}
-                className="group flex flex-col items-center gap-2 transition-transform hover:scale-105 w-20"
+                className="group flex w-20 flex-col items-center gap-2 transition-transform hover:-translate-y-1"
               >
-                <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full border border-gray-100 bg-white shadow-sm overflow-hidden p-1">
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[#3a5360] bg-[#20313c] p-2 shadow-sm sm:h-20 sm:w-20">
                   <img src={brand.img} alt={brand.name} className="w-full h-full object-contain rounded-full" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 group-hover:text-black text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#b5c6cf] group-hover:text-[#69ddfa] text-center">
                   {brand.name}
                 </span>
               </Link>
@@ -261,13 +307,14 @@ export default function Home() {
 
         {/* Productos reales del catálogo: no se anuncian descuentos no verificados. */}
         <section className="mb-16">
-          <div className="w-full overflow-hidden rounded-[24px] bg-[#fff2f6] p-5 sm:p-6 md:rounded-[32px] md:p-10">
+          <div className="w-full overflow-hidden rounded-[26px] border border-[#354e5c] bg-[#142430] p-5 sm:p-7 md:rounded-[32px] md:p-10">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">Descubrí productos SOFF</h2>
-                <p className="mt-2 text-sm text-gray-600">Novedades y productos que podés comprar ahora.</p>
+                <p className="premium-eyebrow mb-2">LA SELECCIÓN SOFF</p>
+                <h2 className="premium-display text-3xl sm:text-4xl">Descubrí productos SOFF</h2>
+                <p className="mt-2 text-sm text-[#b1c4cf]">Novedades y productos que podés comprar ahora.</p>
               </div>
-              <div className="flex w-fit rounded-full bg-white/50 p-1">
+              <div className="flex w-fit rounded-full bg-[#253844] p-1">
                 {[
                   { id: 'novedades', label: 'Novedades' },
                   { id: 'disponibles', label: 'En stock' },
@@ -278,7 +325,7 @@ export default function Home() {
                     onClick={() => setActiveTab(tab.id as 'novedades' | 'disponibles')}
                     aria-pressed={activeTab === tab.id}
                     className={`rounded-full px-4 py-2 text-sm font-bold transition-colors sm:px-5 ${
-                      activeTab === tab.id ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-700 hover:bg-white/70'
+                      activeTab === tab.id ? 'bg-[#2bd0f2] text-[#07151d] shadow-sm' : 'text-[#ccdee7] hover:bg-[#314654]'
                     }`}
                   >
                     {tab.label}
@@ -293,7 +340,7 @@ export default function Home() {
               {loading ? (
                 Array.from({ length: 6 }).map((_, index) => (
                   <div key={index} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
-                    <div className="h-[400px] animate-pulse rounded-2xl bg-white/60" />
+                    <div className="h-[400px] animate-pulse rounded-2xl bg-[#2c414d]" />
                   </div>
                 ))
               ) : visibleProducts.length > 0 ? (
@@ -303,10 +350,10 @@ export default function Home() {
                   </div>
                 ))
               ) : (
-                <div className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white/70 px-6 py-16 text-center">
-                  <PackageSearch size={36} className="mb-3 text-gray-400" />
-                  <h3 className="text-lg font-bold text-gray-900">No hay productos para mostrar</h3>
-                  <p className="mt-2 max-w-md text-sm text-gray-600">Probá con la pestaña Novedades o visitá el catálogo completo.</p>
+                <div className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[#46606c] bg-[#21323e] px-6 py-16 text-center">
+                  <PackageSearch size={36} className="mb-3 text-[#8fa8b5]" />
+                  <h3 className="text-lg font-bold text-[#eef7fb]">No hay productos para mostrar</h3>
+                  <p className="mt-2 max-w-md text-sm text-[#b5c6cf]">Probá con la pestaña Novedades o visitá el catálogo completo.</p>
                   <Link href="/productos" className="mt-4 rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white hover:bg-black">Ver catálogo</Link>
                 </div>
               )}
@@ -332,11 +379,11 @@ export default function Home() {
 
             return (
               <div key={catRow.id} className="w-full overflow-hidden">
-                <div className="mb-6 flex items-end justify-between border-b border-gray-200 pb-3">
-                  <h2 className="text-2xl font-bold text-[#002f5b]">{catRow.title}</h2>
+                <div className="mb-6 flex items-end justify-between border-b border-[#314652] pb-3">
+                  <h2 className="premium-display text-3xl text-[#ecf5fa]">{catRow.title}</h2>
                   <Link
                     href={`/productos?categoria=${encodeURIComponent(catRow.id)}`}
-                    className="text-sm font-bold text-brand-primary hover:text-[#002f5b] transition-colors"
+                    className="text-sm font-bold text-[#61d8f5] transition-colors hover:text-[#ecf5fa]"
                   >
                     Ver todo
                   </Link>
@@ -345,7 +392,7 @@ export default function Home() {
                 <AutoCarousel speed={4000} label={catRow.title}>
                   {loading
                     ? Array.from({ length: 4 }).map((_, index) => (
-                        <div key={index} className="w-[200px] sm:w-[240px] shrink-0 snap-start h-72 animate-pulse rounded-lg bg-gray-100" />
+                        <div key={index} className="w-[200px] sm:w-[240px] shrink-0 snap-start h-72 animate-pulse rounded-lg bg-[#253642]" />
                       ))
                     : rowProducts.map((product) => (
                         <div key={product.id} className="w-[200px] sm:w-[240px] shrink-0 snap-start">
@@ -358,15 +405,15 @@ export default function Home() {
           })}
         </section>
 
-        <section id="oportunidades" className="scroll-mt-40 border-t border-gray-200 py-12">
-          <div className="mb-6 flex items-center justify-between gap-4">
+        <section id="oportunidades" className="scroll-mt-40 border-t border-[#314652] py-12">
+          <div className="mb-7 flex items-center justify-between gap-4">
             <div>
-              <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-brand-primary">
+              <p className="premium-eyebrow mb-2 flex items-center gap-2">
                 <BadgePercent size={16} /> Oportunidades
               </p>
-              <h2 className="text-2xl font-bold text-[#002f5b]">Combos y rutinas destacadas</h2>
+              <h2 className="premium-display text-3xl sm:text-4xl">Combos y rutinas destacadas</h2>
             </div>
-            <Link href="/productos" className="hidden text-sm font-bold text-[#002f5b] hover:text-brand-primary sm:inline">
+            <Link href="/productos" className="hidden text-sm font-bold text-[#61d8f5] hover:text-[#ecf5fa] sm:inline">
               Ver catálogo
             </Link>
           </div>
@@ -387,11 +434,11 @@ export default function Home() {
                   href={`https://wa.me/5493816253929?text=${encodeURIComponent(`Hola Soff, quiero consultar la disponibilidad y el precio final del combo "${combo.name}".`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between rounded-lg bg-[#f8f8f8] p-4 transition hover:shadow-md"
+                  className="group flex items-center justify-between rounded-2xl border border-[#324b58] bg-[#1b2b36] p-4 text-[#ecf5fa] transition hover:border-[#25c1e7] hover:shadow-md"
                   aria-label={`Consultar el combo ${combo.name} por WhatsApp`}
                 >
                   <div className="flex min-w-0 items-center gap-4">
-                    <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded bg-white p-1">
+                    <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded bg-[#20313c] p-1">
                       {combo.image_url ? (
                         <img src={combo.image_url} alt={combo.name} className="h-full w-full object-contain" />
                       ) : (
@@ -399,18 +446,18 @@ export default function Home() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a8bbc5]">
                         {combo.combo_products?.length || 0} PRODUCTOS • {combo.discount_percentage}% OFF
                       </p>
-                      <h3 className="line-clamp-2 text-[13px] font-semibold text-gray-800">{combo.name}</h3>
+                      <h3 className="line-clamp-2 text-[13px] font-semibold text-[#edf7fa]">{combo.name}</h3>
                       <div className="mt-1 flex items-center gap-2">
-                        <span className="text-sm font-bold text-[#c1272d]">{formatPrice(discountedPrice)}</span>
-                        <span className="text-[11px] text-gray-400 line-through">{formatPrice(originalPrice)}</span>
+                        <span className="text-sm font-bold text-[#6bddf4]">{formatPrice(discountedPrice)}</span>
+                        <span className="text-[11px] text-[#8fa8b5] line-through">{formatPrice(originalPrice)}</span>
                       </div>
-                      <p className="mt-1 text-[11px] text-gray-600">Precio estimado. Consultar disponibilidad y precio final por WhatsApp.</p>
+                      <p className="mt-1 text-[11px] text-[#b5c6cf]">Precio estimado. Consultar disponibilidad y precio final por WhatsApp.</p>
                     </div>
                   </div>
-                  <span className="ml-3 flex h-8 w-8 flex-none items-center justify-center rounded-full border border-gray-300 text-gray-500 transition-colors group-hover:bg-white">
+                  <span className="ml-3 flex h-8 w-8 flex-none items-center justify-center rounded-full border border-[#46606c] text-[#a8bbc5] transition-colors group-hover:bg-[#263e4a]">
                     <ArrowRight size={16} />
                   </span>
                 </a>
@@ -418,60 +465,61 @@ export default function Home() {
             })}
             
             {combos.length === 0 && !loading && (
-              <div className="col-span-full py-8 text-center text-gray-500">
+              <div className="col-span-full py-8 text-center text-[#a8bbc5]">
                 Próximamente combos y rutinas disponibles.
               </div>
             )}
           </div>
         </section>
 
-        <section id="rutinas" className="scroll-mt-40 border-t border-gray-200 py-12">
+        <section id="rutinas" className="scroll-mt-40 border-t border-[#314652] py-12">
           <div className="grid gap-4 md:grid-cols-3">
             {[
               { title: 'Hidratación', copy: 'Para recuperar suavidad y movimiento.', href: '/productos?q=hidratacion' },
               { title: 'Reparación', copy: 'Para puntas secas o cabello tratado.', href: '/productos?q=reparacion' },
               { title: 'Color y brillo', copy: 'Para sostener tonos y luminosidad.', href: '/productos?q=tintura' },
             ].map((routine) => (
-              <Link key={routine.title} href={routine.href} className="rounded-lg border border-gray-200 p-5 transition hover:border-brand-primary">
-                <Sparkles size={22} className="mb-4 text-brand-primary" />
-                <h3 className="text-lg font-bold text-[#002f5b]">{routine.title}</h3>
-                <p className="mt-2 text-sm text-gray-600">{routine.copy}</p>
+              <Link key={routine.title} href={routine.href} className="rounded-2xl border border-[#324b58] bg-[#1b2b36] p-7 text-[#ecf5fa] transition hover:-translate-y-1 hover:border-[#25c1e7] hover:shadow-lg">
+                <Sparkles size={22} className="mb-4 text-[#5ad6f3]" />
+                <h3 className="premium-display text-2xl">{routine.title}</h3>
+                <p className="mt-2 text-sm text-[#b5c6cf]">{routine.copy}</p>
               </Link>
             ))}
           </div>
         </section>
 
-        <section id="ubicacion" className="scroll-mt-40 border-t border-gray-200 py-16 text-center">
+        <section id="ubicacion" className="scroll-mt-40 border-t border-[#314652] py-16 text-center">
           <div className="mb-10">
-            <h2 className="text-3xl font-extrabold text-[#002f5b] mb-3">Nuestra Ubicación</h2>
-            <p className="text-gray-500">Visítanos y conoce todo nuestro catálogo</p>
-            <div className="w-16 h-1 bg-red-400 mx-auto mt-4 rounded-full"></div>
+            <p className="premium-eyebrow mb-2">VENÍ A CONOCERNOS</p>
+            <h2 className="premium-display mb-3 text-4xl">Nuestra ubicación</h2>
+            <p className="text-[#a8bbc5]">Visítanos y conoce todo nuestro catálogo</p>
+            <div className="mx-auto mt-5 h-px w-20 bg-[#22c4ea]"></div>
           </div>
 
-          <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden flex flex-col md:flex-row text-left">
+          <div className="mx-auto flex max-w-5xl flex-col overflow-hidden rounded-[26px] border border-[#324b58] bg-[#1b2b36] text-left text-[#ecf5fa] shadow-sm md:flex-row">
             {/* Left Col - Info */}
             <div className="flex-1 p-10 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-red-50 text-red-400 rounded-full flex items-center justify-center mb-6">
+              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#1b3341] text-[#63d9f4]">
                 <MapPin size={32} />
               </div>
-              <h3 className="text-2xl font-bold text-[#002f5b] mb-2">Punto de Entrega</h3>
-              <p className="text-gray-500 mb-8">Avenida Independencia 2820, San Miguel de Tucumán</p>
+              <h3 className="premium-display mb-2 text-3xl">Punto de entrega</h3>
+              <p className="text-[#a8bbc5] mb-8">Avenida Independencia 2820, San Miguel de Tucumán</p>
               
               <a
                 href="https://maps.app.goo.gl/BHEqyxZ16syyHsvo6"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1e293b] px-8 py-3.5 text-sm font-bold text-white hover:bg-black transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#111d27] px-8 py-3.5 text-sm font-bold text-white transition hover:bg-[#1a7795]"
               >
                 <div className="w-5 h-5 border-2 border-white rounded transform rotate-45 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                  <div className="w-1.5 h-1.5 bg-[#dce9ef] rounded-full"></div>
                 </div>
                 Ver en Google Maps
               </a>
             </div>
 
             {/* Right Col - Map Embed */}
-            <div className="flex-1 min-h-[300px] md:min-h-full bg-gray-100 relative">
+            <div className="flex-1 min-h-[300px] md:min-h-full bg-[#253642] relative">
               <iframe 
                 src="https://maps.google.com/maps?q=Av.%20Independencia%202820,%20San%20Miguel%20de%20Tucuman&t=&z=16&ie=UTF8&iwloc=&output=embed" 
                 width="100%" 
@@ -491,7 +539,7 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Consultar por Instagram"
-          className="fixed bottom-5 left-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[#002f5b] text-white shadow-lg transition hover:bg-brand-primary hover:text-black"
+          className="fixed bottom-5 left-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[#111d27] text-[#70e2fb] shadow-lg transition hover:bg-[#22c4ea] hover:text-[#09131a]"
         >
           <MessageCircle size={22} />
         </a>

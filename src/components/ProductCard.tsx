@@ -46,11 +46,11 @@ export default function ProductCard({ product, userRole, showCode = false }: Pro
   }
 
   return (
-    <article className="group flex h-full min-w-0 flex-col rounded-lg border border-gray-200 bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md">
+    <article className="soff-product-card group flex h-full min-w-0 flex-col rounded-2xl border border-[#324b5a] bg-[#1d2d39] p-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.16)] transition hover:-translate-y-1 hover:border-[#35c9ec] hover:shadow-[0_14px_34px_rgba(0,0,0,0.30)]">
       <div className="relative mb-3">
         <Link
           href={`/producto/${product.id}`}
-          className="flex aspect-square items-center justify-center overflow-hidden rounded-md bg-[#f8f8f8] p-3"
+          className="flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-[#e9f0f3] p-3"
         >
           {product.image_url && !imageFailed ? (
             <img
@@ -62,7 +62,7 @@ export default function ProductCard({ product, userRole, showCode = false }: Pro
               className="max-h-full max-w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-gray-400">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center text-[#a2b7c3]">
               <PackageSearch size={28} strokeWidth={1.5} />
               <span className="text-xs">Sin imagen</span>
             </div>
@@ -79,7 +79,7 @@ export default function ProductCard({ product, userRole, showCode = false }: Pro
           className={`absolute top-2 right-2 p-1.5 rounded-full transition-all duration-200 z-10 ${
             fav 
               ? 'bg-red-50 text-red-500 shadow-sm scale-105' 
-              : 'bg-white/80 backdrop-blur-xs text-gray-400 hover:text-red-500 hover:bg-white'
+              : 'bg-white/80 backdrop-blur-xs text-[#a2b7c3] hover:text-red-500 hover:bg-white'
           }`}
           title={fav ? "Quitar de favoritos" : "Guardar en favoritos"}
         >
@@ -91,31 +91,31 @@ export default function ProductCard({ product, userRole, showCode = false }: Pro
         <div className="mb-1 flex min-w-0 items-center justify-between gap-2">
           <Link
             href={productCategoryHref(product.category)}
-            className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 hover:text-brand-primary"
+            className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-[#b1c4cf] hover:text-[#5cdafa]"
           >
             {product.category || 'Productos'}
           </Link>
-          {showCode && product.internal_code && <span className="flex-none text-[10px] text-gray-400">#{product.internal_code}</span>}
+          {showCode && product.internal_code && <span className="flex-none text-[10px] text-[#a2b7c3]">#{product.internal_code}</span>}
         </div>
 
         <Link href={`/producto/${product.id}`} className="mt-1">
-          <h3 className="line-clamp-3 min-h-[48px] text-[13px] font-semibold leading-snug text-gray-800 transition-colors hover:text-[#002f5b]">
+          <h3 className="line-clamp-3 min-h-[48px] text-[13px] font-semibold leading-snug text-[#ecf6fa] transition-colors hover:text-[#6bdef8]">
             {product.name}
           </h3>
         </Link>
 
         <div className="mt-auto flex items-end justify-between gap-3 pt-3">
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[#c1272d]">{hasPrice ? formatPrice(price) : 'Consultar precio'}</p>
+            <p className="text-base font-bold text-[#f2f9fb]">{hasPrice ? formatPrice(price) : 'Consultar precio'}</p>
             
             {/* Precio mayorista para incentivar (solo si es minorista) */}
             {userRole === 'minorista' && product.price_mayorista && Number(product.price_mayorista) > 0 && (
-              <p className="text-[10px] text-gray-400 font-medium leading-tight mt-0.5" title="Precio para mayoristas">
+              <p className="text-[10px] text-[#a2b7c3] font-medium leading-tight mt-0.5" title="Precio para mayoristas">
                 Por mayor: {formatPrice(Number(product.price_mayorista))}
               </p>
             )}
             
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-[#b1c4cf] mt-0.5">
               {stock > 0 ? `${stock} disponibles` : 'Sin stock'}
             </p>
           </div>
@@ -124,7 +124,7 @@ export default function ProductCard({ product, userRole, showCode = false }: Pro
             onClick={handleAddToCart}
             disabled={!isAvailable}
             aria-label={isAvailable ? `Agregar ${product.name} al carrito` : `${product.name} no disponible`}
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#002f5b] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#25c4e8] text-[#071620] transition-colors hover:bg-[#7cdef5] hover:text-[#071620] disabled:cursor-not-allowed disabled:bg-[#334550] disabled:text-[#9aadb8]"
           >
             <ShoppingBag size={16} strokeWidth={1.8} />
           </button>
