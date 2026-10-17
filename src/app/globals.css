@@ -11,9 +11,9 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   
-  --color-brand-primary: #29c4e8; /* Cian de SOFF: no es el aro de Instagram */
+  --color-brand-primary: var(--soff-brand-primary); /* Cian de SOFF: no es el aro de Instagram */
   --color-brand-secondary: #000000; /* Negro del fondo del logo */
-  --color-brand-accent: #eafaff; /* Cian claro para acentos */
+  --color-brand-accent: var(--soff-brand-accent); /* Cian claro para acentos */
   --color-brand-light: #ffffff;
 }
 
@@ -103,3 +103,22 @@ body {
   .animate-marquee { animation: none; }
   .soff-premium-beauty .premium-button-gold { transition: none; }
 }
+
+/* P020: acentos de marca según diseño, sin afectar las reglas comerciales. */
+:root { --soff-brand-primary: #e88baf; --soff-brand-accent: #fce7f3; }
+html[data-soff-theme="premium"] { --soff-brand-primary: #29c4e8; --soff-brand-accent: #eafaff; }
+html[data-soff-theme="premium"] body { background: #0b131a; }
+html[data-soff-theme="clasico"] body { background: #ffffff; }
+
+/* P020: páginas de catálogo y ficha en modo premium sin alterar formularios ni checkout. */
+html[data-soff-theme="premium"] .soff-public-catalog,
+html[data-soff-theme="premium"] .soff-public-detail { background: #101a23; color: #ecf5fa; }
+html[data-soff-theme="premium"] .soff-public-catalog :where(h1,h2,h3),
+html[data-soff-theme="premium"] .soff-public-detail :where(h1,h2,h3) { color: #eff9fc; }
+html[data-soff-theme="premium"] .soff-public-catalog .text-gray-600,
+html[data-soff-theme="premium"] .soff-public-detail .text-gray-600 { color: #bacbd4; }
+html[data-soff-theme="premium"] .soff-public-catalog main > section:first-child .text-gray-700 { color: #cbdbe5; }
+/* Los paneles de filtros y de compra conservan fondos claros para mantener contraste en sus controles. */
+html[data-soff-theme="premium"] .soff-public-catalog input,
+html[data-soff-theme="premium"] .soff-public-catalog select,
+html[data-soff-theme="premium"] .soff-public-detail input { color: #172630; }
