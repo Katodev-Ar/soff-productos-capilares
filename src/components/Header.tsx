@@ -163,9 +163,9 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed z-50 w-full border-b border-gray-200 bg-white text-black transition-all">
+      <header className="fixed z-50 w-full border-b border-[#263845] bg-[#101a23] text-[#eef7fa] shadow-[0_8px_26px_rgba(0,7,12,0.28)] transition-all">
         {/* Marquee Top Bar */}
-        <div className="bg-[#f28599] text-white py-2 overflow-hidden whitespace-nowrap flex items-center relative z-50">
+        <div className="relative z-50 flex items-center overflow-hidden whitespace-nowrap bg-[#08121a] py-2 text-[#8de4f9]">
           <div className="animate-marquee inline-block text-[11px] sm:text-xs font-bold tracking-wide uppercase">
             <span className="mx-8">Visita nuestro local en Av. Independencia 2820 de Lun a Vie de 10h a 18h y Sáb de 10h a 14h</span>
             <span className="mx-8">•</span>
@@ -183,8 +183,8 @@ export default function Header() {
 
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-5 py-4 lg:gap-8">
-            <Link href="/" className="flex flex-none items-center" aria-label="Ir al inicio">
-              <img src="/logo.png" alt="Soff" className="h-10 w-auto bg-black object-contain px-2 py-1" />
+            <Link href="/" className="flex flex-none items-center rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2ac6ea]" aria-label="Ir al inicio">
+              <img src="/logo.png" alt="Soff" className="h-11 w-auto rounded-lg bg-[#101a23] px-2 py-1 object-contain" />
             </Link>
 
             <form onSubmit={handleSearch} className="hidden flex-1 md:flex">
@@ -194,11 +194,11 @@ export default function Header() {
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="¿Qué estás buscando?"
-                  className="w-full rounded-full bg-[#f4f4f4] py-2.5 pl-6 pr-12 text-sm outline-none ring-1 ring-transparent transition focus:ring-gray-300"
+                  className="w-full rounded-full border border-[#344957] bg-[#1b2934] text-[#edf7fb] placeholder:text-[#9aaebb] py-3 pl-6 pr-12 text-sm outline-none ring-1 ring-transparent transition focus:border-[#31c9eb] focus:ring-[#31c9eb]/30"
                 />
                 <button
                   type="submit"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#002f5b]"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9fbac8] hover:text-[#65dfff]"
                   aria-label="Buscar productos"
                 >
                   <Search size={18} />
@@ -212,7 +212,7 @@ export default function Header() {
                   <button
                     type="button"
                     onClick={() => setIsProfileOpen((current) => !current)}
-                    className="flex items-center space-x-2 text-sm text-gray-700 hover:text-black"
+                    className="flex items-center space-x-2 text-sm text-[#e4f0f5] hover:text-[#65dfff]"
                     aria-expanded={isProfileOpen}
                     aria-label="Abrir menú de perfil"
                   >
@@ -231,7 +231,7 @@ export default function Header() {
                     <span className="hidden font-medium lg:inline">{userName}</span>
                   </button>
                 ) : (
-                  <Link href="/login" className="flex items-center space-x-2 text-sm text-gray-700 hover:text-black">
+                  <Link href="/login" className="flex items-center space-x-2 text-sm text-[#e4f0f5] hover:text-[#65dfff]">
                     <User size={20} strokeWidth={1.5} />
                     <span className="hidden lg:inline">Iniciar sesión</span>
                   </Link>
@@ -304,7 +304,7 @@ export default function Header() {
                         <Link href="/admin" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-white/5">
                           <ShieldCheck size={18} className="text-brand-primary" />
                           <span className="text-sm font-semibold">Panel Admin</span>
-                          <span className="ml-auto rounded bg-brand-primary px-2 py-0.5 text-[9px] font-bold uppercase text-black">Admin</span>
+                          <span className="ml-auto rounded bg-brand-primary px-2 py-0.5 text-[9px] font-bold uppercase text-[#edf7fb]">Admin</span>
                         </Link>
                       )}
                     </nav>
@@ -325,7 +325,7 @@ export default function Header() {
 
               <Link 
                 href="/favoritos" 
-                className="relative text-gray-700 hover:text-red-500 transition-colors hidden sm:block p-1" 
+                className="relative text-[#e4f0f5] hover:text-[#f88ccf] transition-colors hidden sm:block p-1" 
                 aria-label="Ver favoritos"
                 title="Mis Favoritos"
               >
@@ -337,16 +337,16 @@ export default function Header() {
                 )}
               </Link>
 
-              <button type="button" onClick={() => setIsCartOpen(true)} className="relative text-gray-700 hover:text-black p-1" aria-label="Abrir carrito">
+              <button type="button" onClick={() => setIsCartOpen(true)} className="relative text-[#e4f0f5] hover:text-[#65dfff] p-1" aria-label="Abrir carrito">
                 <ShoppingBag size={20} strokeWidth={1.5} />
                 {cartCount > 0 && (
-                  <span className="absolute -right-2 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[9px] font-bold text-white">
+                  <span className="absolute -right-2 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#2cc5e7] text-[9px] font-bold text-[#09131b]">
                     {cartCount}
                   </span>
                 )}
               </button>
 
-              <button type="button" className="text-gray-700 md:hidden" onClick={() => setIsMenuOpen((current) => !current)} aria-label="Abrir menú">
+              <button type="button" className="text-[#e4f0f5] md:hidden" onClick={() => setIsMenuOpen((current) => !current)} aria-label="Abrir menú">
                 {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
             </div>
@@ -355,14 +355,14 @@ export default function Header() {
           <nav className="hidden items-center space-x-8 pb-3 md:flex">
             {navLinks.map((item) => (
               <div key={item.label} className="group relative pb-1">
-                <Link href={item.href} className="flex items-center text-[13px] font-bold text-[#002f5b] hover:text-brand-primary">
+                <Link href={item.href} className="flex items-center text-[13px] font-semibold text-[#d8edf5] hover:text-[#70e3fb] focus-visible:underline">
                   {item.label}
                   {item.dropdown && <ChevronDown size={12} className="ml-1 opacity-70" />}
                 </Link>
                 {item.dropdown && (
-                  <div className="invisible absolute left-0 top-full z-[80] min-w-56 translate-y-2 rounded-lg border border-gray-200 bg-white p-2 opacity-0 shadow-xl transition-all group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                  <div className="invisible absolute left-0 top-full z-[80] min-w-56 translate-y-2 rounded-xl border border-[#334957] bg-[#182833] p-2 opacity-0 shadow-xl transition-all group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
                     {item.dropdown.map((link) => (
-                      <Link key={link.label} href={link.href} className="block rounded px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-brand-primary">
+                      <Link key={link.label} href={link.href} className="block rounded px-3 py-2 text-sm font-semibold text-[#d6e8f0] hover:bg-[#254150] hover:text-[#71e2fb] focus-visible:underline">
                         {link.label}
                       </Link>
                     ))}
@@ -374,9 +374,9 @@ export default function Header() {
         </div>
 
         {isMenuOpen && (
-          <div className="overflow-hidden border-t bg-white md:hidden">
+          <div className="overflow-hidden border-t border-[#304956] bg-[#14242f] text-[#edf7fb] md:hidden">
             <div className="space-y-4 p-4">
-              <form onSubmit={handleSearch} className="flex overflow-hidden rounded-full bg-[#f4f4f4]">
+              <form onSubmit={handleSearch} className="flex overflow-hidden rounded-full bg-[#223745] text-[#edf7fb]">
                 <input
                   type="search"
                   value={searchQuery}
@@ -384,21 +384,21 @@ export default function Header() {
                   placeholder="Buscar productos"
                   className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm outline-none"
                 />
-                <button type="submit" className="flex w-11 items-center justify-center text-gray-600" aria-label="Buscar">
+                <button type="submit" className="flex w-11 items-center justify-center text-[#bdd4de]" aria-label="Buscar">
                   <Search size={18} />
                 </button>
               </form>
 
-              <Link href={isLoggedIn ? '/cuenta' : '/login'} onClick={() => setIsMenuOpen(false)} className="block border-b py-2 font-medium text-gray-800">
+              <Link href={isLoggedIn ? '/cuenta' : '/login'} onClick={() => setIsMenuOpen(false)} className="block border-b py-2 font-medium text-[#edf7fb]">
                 Mi cuenta
               </Link>
               {userRole === 'admin' && (
-                <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="block border-b py-2 font-bold text-black">
+                <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="block border-b py-2 font-bold text-[#edf7fb]">
                   Panel Admin
                 </Link>
               )}
               {navLinks.map((item) => (
-                <Link key={item.label} href={item.href} onClick={() => setIsMenuOpen(false)} className="block border-b py-2 font-medium text-gray-800 last:border-b-0">
+                <Link key={item.label} href={item.href} onClick={() => setIsMenuOpen(false)} className="block border-b py-2 font-medium text-[#edf7fb] last:border-b-0">
                   {item.label}
                 </Link>
               ))}
