@@ -122,3 +122,115 @@ html[data-soff-theme="premium"] .soff-public-catalog main > section:first-child 
 html[data-soff-theme="premium"] .soff-public-catalog input,
 html[data-soff-theme="premium"] .soff-public-catalog select,
 html[data-soff-theme="premium"] .soff-public-detail input { color: #172630; }
+
+
+/* P021 · Perla Editorial — una tienda luminosa, sin fondo blanco puro. */
+html[data-soff-theme="perla"] { --soff-brand-primary: #127ea4; --soff-brand-accent: #d9f0fa; }
+html[data-soff-theme="perla"] body { background: #edf4f7; }
+.soff-perla-editorial { background: #edf4f7; color: #122f42; }
+.soff-perla-main > section:not(.soff-perla-intro) { scroll-margin-top: 10rem; }
+.soff-perla-main > section[aria-label="Explorar categorías"] { border-color: #cfdee7; }
+.soff-perla-main section :where(h1,h2) { letter-spacing: -0.035em; }
+.soff-perla-main > section :where(a,button):focus-visible { outline: 2px solid #147fa1; outline-offset: 3px; }
+.soff-perla-editorial .soff-perla-intro { position: relative; overflow: hidden; }
+.soff-perla-editorial .soff-perla-intro::after { content: ''; position:absolute; width:180px;height:180px;right:7%;top:-100px;border-radius:50%;background:rgba(64,188,221,.09);pointer-events:none; }
+.soff-perla-editorial [id="oportunidades"], .soff-perla-editorial [id="rutinas"] { border-color: #c4dae7; }
+.soff-perla-editorial #ubicacion { border-color: #b8d4e2; }
+.soff-perla-editorial .soff-perla-main section:has(> .w-full.overflow-hidden) .w-full.overflow-hidden { background: #e1edf3; }
+html[data-soff-theme="perla"] .soff-perla-header header { background: #f8fcfd; border-color: #ccdfeb; color: #14364a; box-shadow: 0 8px 22px rgba(21,64,89,.06); }
+html[data-soff-theme="perla"] .soff-perla-header header > div:first-child { background: #155776; color: #ecfaff; }
+html[data-soff-theme="perla"] .soff-perla-header header input { background: #ecf3f7; color: #113248; }
+.soff-perla-card { min-width: 0; }
+.soff-perla-card article { border: 1px solid #c8dfe9; border-radius: 20px; background: #f9fcff; padding: 12px; box-shadow: 0 12px 26px rgba(18,65,90,.055); }
+.soff-perla-card article:hover { border-color: #72bdd3; box-shadow: 0 16px 34px rgba(18,65,90,.12); }
+.soff-perla-card article > div:first-child a { background: #eaf2f6; border-radius: 14px; }
+.soff-perla-card article h3 { color: #14364a; font-size: .9rem; }
+.soff-perla-card article .text-\[\#c1272d\] { color: #15516b; }
+.soff-perla-card article button[aria-label^="Agregar"] { background: #146a89; }
+.soff-perla-card article button[aria-label^="Agregar"]:hover { background: #11485e; }
+html[data-soff-theme="perla"] .soff-public-catalog, html[data-soff-theme="perla"] .soff-public-detail { background: #edf4f7; color: #16374a; }
+
+/* P021 · Aurora Studio — un azul noche luminoso, no una copia de Grafito. */
+html[data-soff-theme="aurora"] { --soff-brand-primary: #46d6ef; --soff-brand-accent: #bfefff; }
+html[data-soff-theme="aurora"] body { background: #071629; }
+.soff-aurora-studio { background: radial-gradient(circle at 87% 4%, rgba(62,57,160,.22), transparent 25%),linear-gradient(160deg,#071629,#0d1d39 42%,#08192d 100%); color: #eefaff; }
+.soff-aurora-main > .soff-aurora-masthead { color: #a2dbf1; }
+.soff-aurora-studio .soff-aurora-spotlight { background: linear-gradient(122deg,#13284c 0%,#182a54 48%,#093649 100%) !important; border: 1px solid rgba(91,217,250,.24); box-shadow:0 20px 50px rgba(0,9,35,.3); }
+.soff-aurora-studio .soff-aurora-banner { box-shadow:0 20px 60px rgba(0,9,35,.45),0 0 0 1px rgba(99,193,244,.22); }
+.soff-aurora-studio .premium-hero::before { content: ''; position:absolute;inset:0;background:radial-gradient(circle at 72% 30%,rgba(132,79,214,.2),transparent 45%);pointer-events:none;z-index:1; }
+.soff-aurora-studio .premium-display { letter-spacing:-.045em; }
+.soff-aurora-studio .premium-eyebrow { color:#a8c9ff; }
+.soff-aurora-studio .premium-button-gold { background:linear-gradient(115deg,#54e6f5,#82b8ff); color:#08182e; box-shadow:0 12px 30px rgba(57,190,238,.2); }
+.soff-aurora-studio .premium-button-gold:hover { background:linear-gradient(115deg,#a4f0ff,#a9d2ff); }
+.soff-aurora-studio .soff-aurora-services { background:#10294c !important; border-color:#365a82 !important; }
+.soff-aurora-studio .soff-aurora-catalog { background:linear-gradient(135deg,#132744,#172b53) !important;border-color:#39628a !important; }
+.soff-aurora-studio [aria-label="Explorar categorías"] a > div { background:#dfeef4 !important; border-color:#b5d6e5 !important; }
+.soff-aurora-studio [aria-label="Explorar categorías"] a > div img { object-fit:contain; }
+html[data-soff-theme="aurora"] .soff-aurora-header header { background:#101c39; border-color:#385078;box-shadow:0 8px 28px rgba(0,6,30,.4); }
+html[data-soff-theme="aurora"] .soff-aurora-header header > div:first-child { background:linear-gradient(90deg,#145b84,#493a87,#145b84); color:#eafaff; }
+html[data-soff-theme="aurora"] .soff-aurora-header header input { background:#142b49; color:#f5fbff; }
+.soff-aurora-card { min-width:0; }
+.soff-aurora-card article { background:linear-gradient(165deg,#152d50,#172746 80%) !important;border:1px solid #3d5e83 !important;border-radius:20px !important;box-shadow:0 16px 30px rgba(0,7,35,.2); }
+.soff-aurora-card article:hover { border-color:#64d6f5 !important; box-shadow:0 18px 36px rgba(0,9,40,.34); }
+.soff-aurora-card article > div:first-child a { background:#eaf3f8 !important;border-radius:14px; }
+.soff-aurora-card article button[aria-label^="Agregar"] { background:#65d9f1; color:#0a1e36; }
+.soff-aurora-card article button[aria-label^="Agregar"]:hover { background:#b0f1ff; }
+html[data-soff-theme="aurora"] .soff-public-catalog, html[data-soff-theme="aurora"] .soff-public-detail { background:#0d1c33; color:#eaf5ff; }
+html[data-soff-theme="aurora"] .soff-public-catalog :where(h1,h2,h3),html[data-soff-theme="aurora"] .soff-public-detail :where(h1,h2,h3) { color:#f1faff; }
+html[data-soff-theme="aurora"] .soff-public-catalog .text-gray-600,html[data-soff-theme="aurora"] .soff-public-detail .text-gray-600 { color:#b6c9dd; }
+html[data-soff-theme="aurora"] .soff-public-catalog input, html[data-soff-theme="aurora"] .soff-public-catalog select, html[data-soff-theme="aurora"] .soff-public-detail input { color:#1c3145; }
+@media (prefers-reduced-motion:reduce) { .soff-aurora-card article, .soff-perla-card article { transition:none; } }
+
+
+/* P022 · Salvia Botánica — verde salvia, marfil y contrastes legibles. */
+html[data-soff-theme="salvia"] { --soff-brand-primary:#32664d; --soff-brand-accent:#ecf5e8; }
+html[data-soff-theme="salvia"] body { background:#eef2e8; }
+.soff-salvia-botanica { background:#eef2e8; color:#203d31; }
+.soff-salvia-botanica .soff-salvia-intro { box-shadow:0 14px 32px rgba(38,79,50,.07); }
+.soff-salvia-main > section :where(a,button):focus-visible { outline:2px solid #32664d; outline-offset:3px; }
+.soff-salvia-botanica section[aria-label="Explorar categorías"] a > div { background:#f8faf3; border-color:#c6d7bf; }
+.soff-salvia-botanica section[aria-label="Explorar categorías"] img { object-fit:contain; }
+.soff-salvia-botanica [id="oportunidades"],.soff-salvia-botanica [id="rutinas"] { border-color:#b7cdb7; }
+html[data-soff-theme="salvia"] .soff-salvia-header header { background:#f7f9f1; border-color:#c9d8c5; color:#214631; box-shadow:0 8px 24px rgba(27,75,41,.06); }
+html[data-soff-theme="salvia"] .soff-salvia-header header > div:first-child { background:#315f49; color:#f7fff4; }
+html[data-soff-theme="salvia"] .soff-salvia-header header input { background:#e6eee3; color:#203d31; }
+.soff-salvia-card { min-width:0; }
+.soff-salvia-card article { border:1px solid #cbd9c6; border-radius:20px; background:#fafbf5; padding:12px; box-shadow:0 12px 30px rgba(29,69,39,.07); }
+.soff-salvia-card article:hover { border-color:#78a184; box-shadow:0 15px 34px rgba(29,69,39,.13); }
+.soff-salvia-card article > div:first-child a { background:#edf2e8; border-radius:14px; }
+.soff-salvia-card article h3 { color:#244c38; }
+.soff-salvia-card article button[aria-label^="Agregar"] { background:#32664d; color:#fff; }
+.soff-salvia-card article button[aria-label^="Agregar"]:hover { background:#234a37; }
+html[data-soff-theme="salvia"] .soff-public-catalog,html[data-soff-theme="salvia"] .soff-public-detail { background:#eef2e8; color:#244c38; }
+
+/* P022 · Malva Couture — editorial ciruela, malva suave y fotos en perla. */
+html[data-soff-theme="malva"] { --soff-brand-primary:#e4b4cf; --soff-brand-accent:#fae8f3; }
+html[data-soff-theme="malva"] body { background:#1e1423; }
+.soff-malva-couture { background:radial-gradient(circle at 84% 2%,rgba(150,76,127,.16),transparent 32%),linear-gradient(160deg,#1e1423,#281c31 52%,#211624); color:#fff2f9; }
+.soff-malva-couture .soff-malva-spotlight { background:linear-gradient(120deg,#3a2644,#553650) !important; border:1px solid #835c7b; }
+.soff-malva-couture .soff-malva-banner { box-shadow:0 18px 50px rgba(13,4,19,.42),0 0 0 1px rgba(235,180,216,.15); }
+.soff-malva-couture .premium-hero::before { content:''; position:absolute;inset:0;background:radial-gradient(circle at 76% 24%,rgba(214,123,181,.23),transparent 49%);z-index:1;pointer-events:none; }
+.soff-malva-couture .premium-eyebrow { color:#f4bddd; }
+.soff-malva-couture .premium-display { font-family:Georgia,'Times New Roman',serif; letter-spacing:-.047em; }
+.soff-malva-couture .premium-button-gold { background:#e9bad3; color:#25152b; box-shadow:0 12px 24px rgba(216,136,186,.12); }
+.soff-malva-couture .premium-button-gold:hover { background:#f6d5e6; }
+.soff-malva-couture .soff-malva-services { background:#38233f !important; border-color:#6b4b68 !important; }
+.soff-malva-couture .soff-malva-catalog { background:linear-gradient(140deg,#37243f,#4c304d) !important; border-color:#805777 !important; }
+.soff-malva-couture [aria-label="Explorar categorías"] a > div { background:#f7edf4 !important; border-color:#e5cedf !important; }
+.soff-malva-couture [aria-label="Explorar categorías"] a > div img { object-fit:contain; }
+html[data-soff-theme="malva"] .soff-malva-header header { background:#291c30; border-color:#73516f; box-shadow:0 8px 30px rgba(16,5,20,.38); }
+html[data-soff-theme="malva"] .soff-malva-header header > div:first-child { background:linear-gradient(90deg,#543052,#844b77,#543052); color:#fff5fc; }
+html[data-soff-theme="malva"] .soff-malva-header header input { background:#412d47; color:#fff2f9; }
+.soff-malva-card { min-width:0; }
+.soff-malva-card article { background:linear-gradient(165deg,#392640,#342239) !important; border:1px solid #795872 !important; border-radius:20px !important; box-shadow:0 14px 31px rgba(18,6,22,.25); }
+.soff-malva-card article:hover { border-color:#edbcd7 !important; box-shadow:0 18px 39px rgba(18,6,22,.42); }
+.soff-malva-card article > div:first-child a { background:#f6edf4 !important; border-radius:14px; }
+.soff-malva-card article h3 { color:#fff3f9; }
+.soff-malva-card article a[class*="uppercase"] { color:#dfc2d4; }
+.soff-malva-card article button[aria-label^="Agregar"] { background:#edc0d9; color:#281729; }
+.soff-malva-card article button[aria-label^="Agregar"]:hover { background:#f8d7e9; }
+html[data-soff-theme="malva"] .soff-public-catalog,html[data-soff-theme="malva"] .soff-public-detail { background:#25192c; color:#fff0f9; }
+html[data-soff-theme="malva"] .soff-public-catalog :where(h1,h2,h3),html[data-soff-theme="malva"] .soff-public-detail :where(h1,h2,h3) { color:#fff2f9; }
+html[data-soff-theme="malva"] .soff-public-catalog .text-gray-600,html[data-soff-theme="malva"] .soff-public-detail .text-gray-600 { color:#e2c6d8; }
+html[data-soff-theme="malva"] .soff-public-catalog input,html[data-soff-theme="malva"] .soff-public-catalog select,html[data-soff-theme="malva"] .soff-public-detail input { color:#342238; }
+@media(prefers-reduced-motion:reduce) { .soff-salvia-card article,.soff-malva-card article { transition:none; } }
