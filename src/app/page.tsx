@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight, BadgePercent, MapPin, MessageCircle, PackageSearch, Sparkles } from 'lucide-react'
 import Header from '@/components/Header'
@@ -29,38 +29,38 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'novedades' | 'disponibles'>('novedades')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const loadHome = useCallback(async () => {
-    try {
-      setErrorMessage(null)
-      setLoading(true)
+  useEffect(() => {
+    let isMounted = true
 
-      const userPromise = (async () => {
-        try {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (!user) return 'minorista' as UserRole
-          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-          return normalizeRole(profile?.role)
-        } catch {
-          return 'minorista' as UserRole
-        }
-      })()
+    async function loadHome() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-      const catalogPromise = supabase
+      let role: UserRole = 'minorista'
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+        role = normalizeRole(profile?.role)
+      }
+
+      const { data, error } = await supabase
         .from('soff_catalog_public')
         .select(PRODUCT_SELECT)
         .order('created_at', { ascending: false })
         .limit(150)
         .returns<Product[]>()
 
-      const catDataPromise = supabase
+      // Fetch one image per category from the entire catalog to avoid missing images
+      const { data: catData } = await supabase
         .from('soff_catalog_public')
         .select('category, image_url')
         .not('image_url', 'is', null)
         .order('created_at', { ascending: false })
         .limit(100)
         .returns<{ category: string | null; image_url: string | null }[]>()
-
-      const bannerPromise = supabase
+      
+      // Fetch banners
+      const { data: bannerData } = await supabase
         .from('banners')
         .select('*')
         .eq('is_active', true)
@@ -103,21 +103,19 @@ export default function Home() {
               }
             }
           }
+          setCategoryImages(catImgMap)
         }
+        setUserRole(role)
+        setLoading(false)
       }
-      setCategoryImages(catImgMap)
-      setUserRole(role)
-    } catch (err: any) {
-      console.error('Error fetching home data:', err)
-      setErrorMessage('No pudimos cargar algunos productos del catálogo. Podés reintentar ahora.')
-    } finally {
-      setLoading(false)
+    }
+
+    void loadHome()
+
+    return () => {
+      isMounted = false
     }
   }, [])
-
-  useEffect(() => {
-    void loadHome()
-  }, [loadHome])
 
   const visibleProducts = useMemo(() => {
     if (activeTab === 'disponibles') {
@@ -289,18 +287,7 @@ export default function Home() {
               </div>
             </div>
 
-            {errorMessage && (
-              <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex flex-wrap items-center justify-between gap-3">
-                <span>{errorMessage}</span>
-                <button
-                  type="button"
-                  onClick={() => void loadHome()}
-                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
-                >
-                  Reintentar
-                </button>
-              </div>
-            )}
+            {errorMessage && <div className="mb-6 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">{errorMessage}</div>}
 
             <AutoCarousel speed={3500} label="Productos destacados">
               {loading ? (
