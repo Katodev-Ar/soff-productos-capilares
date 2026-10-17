@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { 
+  Palette,
   LayoutDashboard, 
   Package, 
   ShoppingBag, 
@@ -46,6 +47,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { name: 'Apariencia', href: '/admin/apariencia', icon: Palette },
     { name: 'Pedidos', href: '/admin/pedidos', icon: Package },
     { name: 'Productos', href: '/admin/productos', icon: ShoppingBag },
     { name: 'Auditoría de catálogo', href: '/admin/calidad-catalogo', icon: ClipboardCheck },

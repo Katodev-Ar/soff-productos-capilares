@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
+import { StorefrontThemeProvider } from "@/components/storefront/StorefrontThemeProvider";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 import CartDrawer from "@/components/CartDrawer";
 import WhatsAppButton from "@/components/WhatsAppButton";
@@ -59,6 +60,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
+        <StorefrontThemeProvider>
         <CartProvider>
           <FavoritesProvider>
             {children}
@@ -66,6 +68,7 @@ export default function RootLayout({
             <WhatsAppButton />
           </FavoritesProvider>
         </CartProvider>
+        </StorefrontThemeProvider>
       </body>
     </html>
   );

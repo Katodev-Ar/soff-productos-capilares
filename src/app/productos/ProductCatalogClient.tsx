@@ -184,7 +184,7 @@ export default function ProductCatalogClient({ initialCategory, initialQuery, in
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white text-gray-900">
+    <div className="flex min-h-screen flex-col soff-public-catalog bg-white text-gray-900">
       <Header />
 
       <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
